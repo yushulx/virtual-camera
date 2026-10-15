@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Virtual Camera
+GenericName=Virtual camera controller
+Comment=Feed a video or image file into a virtual camera that browsers and apps see as a real webcam
+Exec=virtual-camera
+Icon=virtual-camera
+Terminal=false
+Categories=AudioVideo;Video;Utility;
+Keywords=camera;webcam;virtual;video;loopback;
+StartupNotify=true

@@ -1,0 +1,9 @@
+; VirtualCameraDriver.def - exported COM entry points.
+
+LIBRARY VirtualCameraDriver
+
+EXPORTS
+    DllGetClassObject   PRIVATE
+    DllCanUnloadNow     PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE

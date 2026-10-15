@@ -1,0 +1,332 @@
+name: Build installers
+
+# Builds the release packages of the virtual camera for all three platforms
+# and (for tags, or when "create_release" is checked) publishes them in a
+# GitHub release:
+#
+#   Windows   VirtualCameraSetup-<version>.exe             Inno Setup installer
+#             VirtualCamera-<version>-win64-portable.zip   unpack-and-use ZIP
+#   Linux     virtual-camera_<version>_amd64.deb          Debian/Ubuntu package
+#   macOS     VirtualCamera-<version>.pkg                 installer package
+#
+#   * push a tag:       git tag v1.0.0 && git push origin v1.0.0
+#   * or run it by hand: Actions -> Build installers -> Run workflow
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version stamped into the packages (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+      create_release:
+        description: 'Publish the packages as a GitHub release'
+        type: boolean
+        default: false
+      qt_version:
+        description: 'Qt version for the Windows/macOS builds'
+        required: true
+        default: '6.8.2'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: installers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Version / release decision
+  # ---------------------------------------------------------------------------
+  resolve:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - name: Determine version and release
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            tag="${GITHUB_REF_NAME}"
+            release="true"
+          else
+            version="${{ inputs.version }}"
+            tag="v${version}"
+            release="${{ inputs.create_release }}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}"         >> "$GITHUB_OUTPUT"
+          echo "release=${release}" >> "$GITHUB_OUTPUT"
+          echo "Building version ${version} (tag ${tag}, release ${release})"
+
+  # ---------------------------------------------------------------------------
+  # Windows: Qt GUI + DirectShow filter -> Inno Setup installer + portable ZIP
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows installer
+    runs-on: windows-2022
+    needs: resolve
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt ${{ inputs.qt_version || '6.8.2' }}
+        id: qt
+        continue-on-error: true
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ inputs.qt_version || '6.8.2' }}
+          arch: 'win64_msvc2022_64'
+          dir: ${{ github.workspace }}/qt
+          cache: true
+
+      - name: Install Qt (fallback 6.5.3)
+        if: steps.qt.outcome == 'failure'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          arch: 'win64_msvc2019_64'
+          dir: ${{ github.workspace }}/qt
+          cache: true
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the app, the DirectShow filter and the packages
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          $qtRoot = if ($env:QT_ROOT_DIR) { $env:QT_ROOT_DIR } else { $env:QTDIR }
+          $arguments = @{
+            Version = $env:VERSION
+          }
+          if ($qtRoot) { $arguments['QTDir'] = $qtRoot }
+          .\windows\scripts\build-windows.ps1 @arguments
+
+      - name: Show the packages
+        shell: pwsh
+        run: Get-ChildItem .\windows\dist -File | Select-Object Name, Length
+
+      - name: Upload the packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            windows/dist/*.exe
+            windows/dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Linux: Qt GUI -> .deb (v4l2loopback is pulled in as a dependency)
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux package
+    runs-on: ubuntu-24.04
+    needs: resolve
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake \
+            qt6-base-dev qt6-multimedia-dev \
+            libv4l-dev v4l2-utils dpkg-dev
+
+      - name: Unit tests
+        run: |
+          cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/linux --parallel
+          QT_QPA_PLATFORM=offscreen ctest --test-dir build/linux --output-on-failure
+
+      - name: v4l2loopback smoke test (best effort)
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            v4l2loopback-dkms linux-headers-$(uname -r)
+          sudo modprobe v4l2loopback exclusive_caps=1 \
+            card_label="Virtual Camera" max_devices=1 || exit 0
+          v4l2-ctl --list-devices
+          QT_QPA_PLATFORM=offscreen ./build/linux/cli/virtual-camera-cli \
+            --pattern --duration 3 --width 640 --height 480
+          v4l2-ctl -d "$(v4l2-ctl --list-devices | awk '/Virtual Camera/{getline; print $NF}' | tr -d ':')" --stream-mmap --stream-count=3 --stream-to=/dev/null || \
+          echo "note: read-back via v4l2-ctl needs a capture-capable view of the device"
+
+      - name: Build the .deb
+        run: bash linux/scripts/make-deb.sh "${{ needs.resolve.outputs.version }}"
+
+      - name: Inspect the package
+        run: |
+          deb="$(ls linux/dist/*.deb)"
+          echo "package: $deb"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: linux/dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # macOS: Qt app + CMIO camera extension -> .pkg
+  # ---------------------------------------------------------------------------
+  macos:
+    name: macOS package
+    runs-on: macos-14
+    needs: resolve
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show the toolchain
+        run: xcodebuild -version && sw_vers
+
+      - name: Install Qt ${{ inputs.qt_version || '6.8.2' }}
+        id: qt
+        continue-on-error: true
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ inputs.qt_version || '6.8.2' }}
+          arch: 'clang_arm64'
+          dir: ${{ github.workspace }}/qt
+          cache: true
+
+      - name: Install Qt (fallback native)
+        if: steps.qt.outcome == 'failure'
+        uses: jurplel/install-qt-action@v4
+        with:
+          arch: 'clang_64'
+          dir: ${{ github.workspace }}/qt
+          cache: true
+
+      - name: Build the installer package
+        id: universal
+        continue-on-error: true
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          # Optional: set these repository secrets to sign and notarize the
+          # package. Without them the package is ad-hoc/unsigned and macOS
+          # Gatekeeper blocks a browser-downloaded copy (users install via
+          # the one-line installer or `sudo installer`).
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
+          KEYCHAIN_PROFILE: ${{ secrets.MACOS_KEYCHAIN_PROFILE }}
+          APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_APPLE_TEAM_ID }}
+        run: |
+          echo "QT_ROOT_DIR=$QT_ROOT_DIR"
+          export PATH="$QT_ROOT_DIR/bin:$PATH"
+          bash ./macos/scripts/package.sh "$VERSION" --build
+
+      - name: Retry with the native architecture only
+        if: steps.universal.outcome == 'failure'
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
+          KEYCHAIN_PROFILE: ${{ secrets.MACOS_KEYCHAIN_PROFILE }}
+          APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_APPLE_TEAM_ID }}
+        run: |
+          rm -rf build/macos macos/dist
+          export PATH="$QT_ROOT_DIR/bin:$PATH"
+          bash ./macos/scripts/package.sh "$VERSION" --build
+
+      - name: Verify the package
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          pkg="macos/dist/VirtualCamera-$VERSION.pkg"
+          ls -l "$pkg"
+          pkgutil --payload-files "$pkg" | head -30
+          pkgutil --check-signature "$pkg" || echo "(not signed - set the MACOS_* secrets to sign and notarize)"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: macos/dist/*.pkg
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    needs: [resolve, windows, linux, macos]
+    if: needs.resolve.outputs.release == 'true'
+    steps:
+      - name: Download all the packages
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: List the packages
+        run: find packages -type f | sort
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: Virtual Camera ${{ needs.resolve.outputs.version }}
+          files: packages/*
+          body: |
+            Virtual camera for Windows, Linux and macOS - version ${{ needs.resolve.outputs.version }}.
+
+            Applications and browsers see it as a real camera
+            (`navigator.mediaDevices.getUserMedia({ video: true })`); it
+            loops a local video file or a static image instead of capturing
+            from hardware.
+
+            | Platform | File | Install |
+            | --- | --- | --- |
+            | Windows | `VirtualCameraSetup-${{ needs.resolve.outputs.version }}.exe` | Run it (asks for administrator rights), then start *Virtual Camera* from the Start menu. |
+            | Windows | `VirtualCamera-${{ needs.resolve.outputs.version }}-win64-portable.zip` | Unpack anywhere, run `scripts\register-driver.cmd` once as administrator. |
+            | Linux | `virtual-camera_${{ needs.resolve.outputs.version }}_amd64.deb` | `sudo apt install ./virtual-camera_<version>_amd64.deb`, then `v4l2-ctl --list-devices`. |
+            | macOS | `VirtualCamera-${{ needs.resolve.outputs.version }}.pkg` | Run the one-line installer below (see Notes), open VirtualCamera.app once and approve the system extension. |
+
+            Notes
+
+            * macOS: the `.pkg` is not Developer ID signed, so double-clicking a
+              browser-downloaded copy is blocked by Gatekeeper. Install with the
+              one-line installer instead - `curl` does not set the quarantine
+              attribute, `installer` skips the Gatekeeper assessment and the
+              script enables the system extension developer mode for unsigned
+              builds:
+
+              ```bash
+              curl -fsSL https://raw.githubusercontent.com/dynamsoft/virtual-camera/main/macos/scripts/install.sh | bash
+              ```
+
+              To ship a signed and notarized package, set the `MACOS_*`
+              repository secrets (see `macos/scripts/package.sh`) and rebuild.
+            * Windows: the DirectShow filter is registered by the installer
+              (administrator). Apps using Media Foundation enumeration do not
+              list DirectShow cameras; all major browsers do.
+            * Linux: the package configures and loads the v4l2loopback module
+              (`exclusive_caps=1`, card label "Virtual Camera") - Chrome and
+              Zoom require `exclusive_caps=1`.
+            * Verify in the browser with the
+              [web-camera-test page](docs/web-camera-test.html) shipped in the
+              repository.

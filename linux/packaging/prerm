@@ -1,0 +1,11 @@
+#!/bin/sh
+# prerm - remove the module configuration files of the virtual camera.
+# The module itself (v4l2loopback-dkms) is left installed.
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    rm -f /etc/modprobe.d/virtual-camera.conf
+    rm -f /etc/modules-load.d/virtual-camera.conf
+fi
+
+exit 0

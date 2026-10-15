@@ -1,0 +1,27 @@
+# Normalize line endings: shell scripts must stay LF (they break on the
+# Linux/macOS CI runners with CRLF), Windows batch/Inno files stay CRLF.
+* text=auto
+
+# LF everywhere these run on Unix-like systems
+*.sh      text eol=lf
+*.swift   text eol=lf
+*.mm      text eol=lf
+*.plist   text eol=lf
+*.entitlements text eol=lf
+*.in      text eol=lf
+*.svg     text eol=lf
+*.desktop text eol=lf
+*.yml     text eol=lf
+postinst  text eol=lf
+prerm     text eol=lf
+
+# CRLF for Windows tooling
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+*.iss     text eol=crlf
+*.def     text eol=crlf
+
+# Never touch these
+*.png binary
+*.jpg binary
+*.ico binary

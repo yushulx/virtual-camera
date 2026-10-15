@@ -1,0 +1,30 @@
+#!/bin/sh
+# postinst - configure and load the v4l2loopback kernel module so the
+# "Virtual Camera" device node exists right after the installation.
+set -e
+
+case "$1" in
+    configure)
+        # Module options: exclusive_caps=1 makes Chrome/Zoom accept the
+        # device (they refuse nodes that advertise both capture and output
+        # capabilities), card_label is what applications display.
+        if [ ! -f /etc/modprobe.d/virtual-camera.conf ]; then
+            cat > /etc/modprobe.d/virtual-camera.conf <<'EOF'
+# Created by the virtual-camera package.
+options v4l2loopback exclusive_caps=1 card_label="Virtual Camera" max_devices=1
+EOF
+        fi
+        # Load at boot.
+        if [ ! -f /etc/modules-load.d/virtual-camera.conf ]; then
+            printf 'v4l2loopback\n' > /etc/modules-load.d/virtual-camera.conf
+        fi
+        # Load it now (best effort: the kernel headers may have been
+        # installed by the dkms trigger of v4l2loopback-dkms).
+        if command -v modprobe >/dev/null 2>&1; then
+            modprobe v4l2loopback 2>/dev/null || \
+                echo "virtual-camera: run 'sudo modprobe v4l2loopback' after a reboot" >&2
+        fi
+        ;;
+esac
+
+exit 0

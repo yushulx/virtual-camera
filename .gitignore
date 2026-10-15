@@ -1,0 +1,41 @@
+.DS_Store
+*.log
+__pycache__/
+.venv/
+
+# --- CMake / build directories (any platform) --------------------------------
+build/
+dist/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.user
+*.user.*
+
+# --- Qt generated -------------------------------------------------------------
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# --- Linux ---------------------------------------------------------------------
+linux/build/
+linux/dist/
+
+# --- macOS ----------------------------------------------------------------------
+macos/build/
+macos/dist/
+*.appex
+
+# --- Windows --------------------------------------------------------------------
+windows/dist/
+windows/build/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.zip

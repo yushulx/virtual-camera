@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Camera - browser test page</title>
+<style>
+    :root { color-scheme: light dark; }
+    body {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        max-width: 860px; margin: 2rem auto; padding: 0 1rem;
+        line-height: 1.5;
+    }
+    video, canvas {
+        width: 100%; background: #101010; border-radius: 8px;
+        margin-top: .5rem;
+    }
+    button {
+        font-size: 1rem; padding: .5rem 1.2rem; margin: .25rem .5rem .25rem 0;
+        border-radius: 6px; border: 1px solid #888; cursor: pointer;
+    }
+    pre {
+        background: rgba(127,127,127,.12); padding: .75rem; border-radius: 8px;
+        white-space: pre-wrap; font-size: .85rem;
+    }
+    .ok   { color: #1a7f37; }
+    .err  { color: #c62828; font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+    td, th { border: 1px solid rgba(127,127,127,.4); padding: .3rem .6rem;
+             text-align: left; font-size: .9rem; }
+</style>
+</head>
+<body>
+<h1>Virtual Camera &mdash; browser test page</h1>
+<p>
+    This page verifies that the <strong>Virtual Camera</strong> is installed
+    and working. Allow camera access when asked (the browser's normal
+    permission prompt), then pick <em>Virtual Camera</em> if the browser
+    shows a device picker.
+</p>
+
+<p>
+    <button id="start">Start camera</button>
+    <button id="snapshot">Snapshot</button>
+    <button id="stop">Stop</button>
+</p>
+
+<video id="video" autoplay playsinline muted></video>
+<p><canvas id="canvas" width="1280" height="720" hidden></canvas></p>
+
+<h2>Available devices</h2>
+<table id="devices"><thead>
+    <tr><th>Label</th><th>Kind</th><th>Device ID</th></tr>
+</thead><tbody></tbody></table>
+
+<h2>Active track</h2>
+<pre id="trackInfo">(not started)</pre>
+
+<h2>Event log</h2>
+<pre id="log"></pre>
+
+<script>
+"use strict";
+
+const logEl = document.getElementById("log");
+const log = (msg, cls) => {
+    const line = document.createElement("div");
+    if (cls) line.className = cls;
+    line.textContent = new Date().toLocaleTimeString() + "  " + msg;
+    logEl.appendChild(line);
+};
+
+const video = document.getElementById("video");
+let stream = null;
+
+function showTrackInfo() {
+    const info = document.getElementById("trackInfo");
+    if (!stream || stream.getVideoTracks().length === 0) {
+        info.textContent = "(no track)";
+        return;
+    }
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    info.textContent =
+        "label:       " + track.label + "\n" +
+        "id:          " + track.id + "\n" +
+        "readyState:  " + track.readyState + "\n" +
+        "settings:   " + JSON.stringify(settings, null, 2);
+}
+
+async function listDevices() {
+    const tbody = document.querySelector("#devices tbody");
+    tbody.innerHTML = "";
+    let devices = [];
+    try {
+        devices = await navigator.mediaDevices.enumerateDevices();
+    } catch (e) {
+        log("enumerateDevices failed: " + e.message, "err");
+        return;
+    }
+    for (const device of devices) {
+        const row = document.createElement("tr");
+        const cells = [
+            device.label || "(label only visible after camera access)",
+            device.kind,
+            device.deviceId.slice(0, 12) + "\u2026",
+        ];
+        for (const text of cells) {
+            const td = document.createElement("td");
+            td.textContent = text;
+            row.appendChild(td);
+        }
+        if (device.kind === "videoinput" &&
+            /virtual camera/i.test(device.label)) {
+            row.cells[0].className = "ok";
+            log("virtual camera visible: " + device.label, "ok");
+        }
+        tbody.appendChild(row);
+    }
+}
+
+document.getElementById("start").addEventListener("click", async () => {
+    try {
+        log("requesting getUserMedia({video: true}) ...");
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        const track = stream.getVideoTracks()[0];
+        log("camera opened: " + (track.label || "(no label)"), "ok");
+        showTrackInfo();
+        await listDevices();
+    } catch (e) {
+        log("getUserMedia failed: " + e.name + " - " + e.message, "err");
+    }
+});
+
+document.getElementById("stop").addEventListener("click", () => {
+    if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+        video.srcObject = null;
+        log("camera stopped");
+        showTrackInfo();
+    }
+});
+
+document.getElementById("snapshot").addEventListener("click", () => {
+    if (!video.videoWidth) {
+        log("no video yet - press Start first", "err");
+        return;
+    }
+    const canvas = document.getElementById("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.hidden = false;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    log("snapshot: " + video.videoWidth + "x" + video.videoHeight, "ok");
+});
+
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    log("This browser does not support getUserMedia. Use Chrome, Edge or "
+        + "Firefox (macOS: also Safari 17.4+), over http://localhost or "
+        + "https://.", "err");
+} else {
+    if (!window.isSecureContext) {
+        log("Note: getUserMedia requires a secure context (localhost or "
+            + "https).", "err");
+    }
+    listDevices();
+    navigator.mediaDevices.addEventListener?.("devicechange", listDevices);
+}
+</script>
+</body>
+</html>
