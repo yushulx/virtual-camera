@@ -72,13 +72,18 @@ static_assert(kMaxFrameBytes >= kDefaultWidth * kDefaultHeight * 2,
 
 // --- atomics usable on memory shared between processes ---------------------
 
-// MSVC: Interlocked* are full fences and work on pages mapped into multiple
-// processes. GCC/Clang: __atomic builtins give the same guarantees.
+#if defined(_MSC_VER)
+#include <intrin.h> // _InterlockedCompareExchange / _InterlockedIncrement
+#endif
+
+// MSVC: the _Interlocked* intrinsics are full fences and work on pages
+// mapped into multiple processes. GCC/Clang: __atomic builtins give the
+// same guarantees.
 
 inline uint32_t seqLoadAcquire(const volatile uint32_t* seq) {
 #if defined(_MSC_VER)
     return static_cast<uint32_t>(
-        InterlockedCompareExchange(reinterpret_cast<volatile long*>(const_cast<uint32_t*>(seq)), 0, 0));
+        _InterlockedCompareExchange(reinterpret_cast<volatile long*>(const_cast<uint32_t*>(seq)), 0, 0));
 #else
     return __atomic_load_n(seq, __ATOMIC_ACQUIRE);
 #endif
@@ -87,7 +92,7 @@ inline uint32_t seqLoadAcquire(const volatile uint32_t* seq) {
 // Writer: enter the critical section (sequence becomes odd).
 inline void seqBegin(volatile uint32_t* seq) {
 #if defined(_MSC_VER)
-    InterlockedIncrement(reinterpret_cast<volatile long*>(seq));
+    _InterlockedIncrement(reinterpret_cast<volatile long*>(seq));
 #else
     __atomic_fetch_add(seq, 1u, __ATOMIC_ACQ_REL);
 #endif
@@ -97,7 +102,7 @@ inline void seqBegin(volatile uint32_t* seq) {
 // payload writes happen-before this store.
 inline void seqEnd(volatile uint32_t* seq) {
 #if defined(_MSC_VER)
-    InterlockedIncrement(reinterpret_cast<volatile long*>(seq));
+    _InterlockedIncrement(reinterpret_cast<volatile long*>(seq));
 #else
     __atomic_fetch_add(seq, 1u, __ATOMIC_RELEASE);
 #endif

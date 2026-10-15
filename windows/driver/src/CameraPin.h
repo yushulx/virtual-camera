@@ -16,7 +16,7 @@ class CameraPin : public IPin, public IAMStreamConfig
 {
 public:
     explicit CameraPin(CameraFilter* filter);
-    ~CameraPin() override;
+    ~CameraPin();
 
     // IUnknown
     STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override;
@@ -39,13 +39,15 @@ public:
     STDMETHOD(BeginFlush)() override;
     STDMETHOD(EndFlush)() override;
     STDMETHOD(EndOfStream)() override;
+    STDMETHOD(NewSegment)(REFERENCE_TIME tStart, REFERENCE_TIME tStop,
+                          double dRate) override;
 
     // IAMStreamConfig
     STDMETHOD(SetFormat)(AM_MEDIA_TYPE* pmt) override;
     STDMETHOD(GetFormat)(AM_MEDIA_TYPE** ppmt) override;
     STDMETHOD(GetNumberOfCapabilities)(int* piCount, int* piSize) override;
-    STDMETHOD(GetStreamCaps)(int iIndex, BYTE* pSCC,
-                              AM_MEDIA_TYPE** ppmt) override;
+    STDMETHOD(GetStreamCaps)(int iIndex, AM_MEDIA_TYPE** ppmt,
+                             BYTE* pSCC) override;
 
     // --- internal API (called by the filter / enumerators) ----------------
 
@@ -73,6 +75,7 @@ private:
     LONG m_refs = 1;
     CameraFilter* m_filter;         // owning reference
     IPin* m_connected = nullptr;   // downstream input pin (AddRef'd)
+    IMemInputPin* m_memInput = nullptr; // downstream memory input (AddRef'd)
     MemAllocator* m_allocator = nullptr;
     AM_MEDIA_TYPE m_mt{};          // connected media type (deep owned)
     CameraFormat m_format;         // format in use

@@ -28,6 +28,7 @@ target_include_directories(virtualcamera_driver PRIVATE
     ${CMAKE_SOURCE_DIR}/core/include)
 
 target_link_libraries(virtualcamera_driver PRIVATE
+    strmiids   # DirectShow interface IIDs (IID_IPin, IID_IBaseFilter, ...)
     ole32
     user32
     advapi32)

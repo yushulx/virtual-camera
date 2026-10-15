@@ -19,7 +19,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
 
 message(STATUS "virtual-camera ${PROJECT_VERSION} (Qt ${Qt6Core_VERSION})")
 

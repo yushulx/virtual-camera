@@ -12,6 +12,7 @@
 #include <QObject>
 
 class QMediaPlayer;
+class QVideoFrame;
 class QVideoSink;
 
 namespace vcam {
@@ -30,7 +31,7 @@ public:
     QString lastError() const override { return m_error; }
 
 private:
-    void handleFrame(const class QVideoFrame& frame);
+    void handleFrame(const QVideoFrame& frame);
 
     QMediaPlayer* m_player = nullptr;
     QVideoSink* m_sink = nullptr;

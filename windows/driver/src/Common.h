@@ -11,9 +11,15 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 
+#if defined(_MSC_VER)
+// The UCRT wide-string fast paths use SSE intrinsics on x64: make sure they
+// are declared before any system header pulls in <wchar.h>.
+#include <intrin.h>
+#endif
+
 #include <windows.h>
-#include <objbase.h> // CoTaskMemAlloc, StringFromGUID2, DEFINE_GUID support
-#include <strmif.h>   // IBaseFilter, IPin, IAMStreamConfig, AM_MEDIA_TYPE, ...
+#include <dshow.h>   // strmif.h + uuids.h (GUID declarations) + evcode.h + ...
+#include <vfwmsgs.h> // VFW_E_* status codes
 
 #include "vcam/SharedFrameProtocol.h"
 

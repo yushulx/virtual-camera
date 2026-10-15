@@ -2,6 +2,8 @@
 
 #include "MainWindow.h"
 
+using vcam::MainWindow;
+
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);

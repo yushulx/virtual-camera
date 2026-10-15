@@ -26,8 +26,14 @@ bool SharedFrameReader::ensureMapped()
     }
     // The writer creates the section; when it is missing the camera is not
     // running. Re-opened lazily so a later controller start is picked up.
-    HANDLE mapping = OpenFileMappingW(FILE_MAP_READ, FALSE,
-                                      vcam::kShmWindowsName);
+    // The shared protocol carries the name as ASCII; widen it (the build is
+    // UNICODE and the name is plain ASCII).
+    wchar_t name[64] = {};
+    for (size_t i = 0; i < sizeof(vcam::kShmWindowsName) - 1 && i < 63; ++i) {
+        name[i] = static_cast<wchar_t>(
+            static_cast<unsigned char>(vcam::kShmWindowsName[i]));
+    }
+    HANDLE mapping = OpenFileMappingW(FILE_MAP_READ, FALSE, name);
     if (mapping == nullptr) {
         return false;
     }

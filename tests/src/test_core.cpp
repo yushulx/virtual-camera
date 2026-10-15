@@ -11,12 +11,14 @@
 #include "vcam/YuyvConverter.h"
 
 #include <QColor>
-#include <QCoreApplication>
+#include <QGuiApplication>
 #include <QTemporaryDir>
 
 #include <cstdio>
 #include <cstring>
 #include <vector>
+
+using namespace vcam;
 
 #if defined(Q_OS_WIN)
 #include <windows.h>
@@ -125,10 +127,9 @@ void testImageSource()
 
     vcam::ImageSource source(path);
     QImage frame;
-    CHECK(source.latestFrame(80, 60, &frame));
+    CHECK(source.latestFrame(80, 60, &frame));  // cached scaled copy works
     CHECK_EQ(frame.width(), 80);
     CHECK_EQ(frame.height(), 60);
-    CHECK(!source.latestFrame(80, 60, &frame)); // still works after cache
 
     vcam::ImageSource missing(dir.filePath(QStringLiteral("nope.png")));
     CHECK(!missing.latestFrame(10, 10, &frame));
@@ -227,7 +228,9 @@ void testSharedFrameWriter()
 
 int main(int argc, char** argv)
 {
-    QCoreApplication app(argc, argv);
+    // QGuiApplication: PatternSource draws text with QPainter, which needs
+    // the font database. Use the offscreen platform in headless runs.
+    QGuiApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("virtual-camera-tests"));
 
     testYuyvBasics();

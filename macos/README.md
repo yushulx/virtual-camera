@@ -54,7 +54,7 @@ notarization secrets when building - then no developer mode is needed.
 
 ## Build from source
 
-Requirements: CMake 3.21+, Qt 6.5+ (macdeployqt in PATH or `QTDIR` set),
+Requirements: CMake 3.21+, Qt 6.4+ (macdeployqt in PATH or `QTDIR` set),
 Xcode 15+ (Swift toolchain for the extension).
 
 ```bash

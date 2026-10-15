@@ -109,6 +109,8 @@ int main(int argc, char* argv[])
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
+    const int duration = parser.value(durationOption).toInt();
+
     // Poll the signal flag so Ctrl+C works headless.
     QTimer watchdog;
     watchdog.setInterval(200);

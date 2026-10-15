@@ -28,8 +28,6 @@ public:
     STDMETHOD(GetBuffer)(IMediaSample** ppBuffer, REFERENCE_TIME* pStartTime,
                          REFERENCE_TIME* pEndTime, DWORD dwFlags) override;
     STDMETHOD(ReleaseBuffer)(IMediaSample* pBuffer) override;
-    STDMETHOD(SetNotify)(IMemAllocatorNotifyCallbackTemp* pNotify) override;
-    STDMETHOD(GetFreeCount)(LONG* plBuffers) override;
 
     // Called by MediaSample when its refcount drops to zero.
     void releaseSample(MediaSample* sample);

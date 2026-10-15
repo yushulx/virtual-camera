@@ -3,6 +3,7 @@
 #include "SystemExtensionActivator.h"
 
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFileDialog>
@@ -18,6 +19,8 @@
 #include <QSettings>
 #include <QTimer>
 #include <QVBoxLayout>
+
+#include "vcam/MediaSource.h"
 
 #if defined(Q_OS_LINUX)
 #include "vcam/V4L2Writer.h"

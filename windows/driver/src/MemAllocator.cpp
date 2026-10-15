@@ -194,27 +194,4 @@ void MemAllocator::releaseSample(MediaSample* sample)
     }
 }
 
-STDMETHODIMP MemAllocator::SetNotify(
-    IMemAllocatorNotifyCallbackTemp* /*pNotify*/)
-{
-    return E_NOTIMPL; // optional interface member
-}
-
-STDMETHODIMP MemAllocator::GetFreeCount(LONG* plBuffers)
-{
-    if (plBuffers == nullptr) {
-        return E_POINTER;
-    }
-    LONG freeSamples = 0;
-    EnterCriticalSection(&m_lock);
-    for (MediaSample* sample : m_samples) {
-        if (!sample->inUse()) {
-            ++freeSamples;
-        }
-    }
-    LeaveCriticalSection(&m_lock);
-    *plBuffers = freeSamples;
-    return S_OK;
-}
-
 } // namespace vcamdriver

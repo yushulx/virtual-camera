@@ -62,15 +62,15 @@ STDMETHODIMP MediaSample::GetTime(REFERENCE_TIME* pTimeStart,
         return E_POINTER;
     }
     if (!m_hasTime) {
-        return VFW_E_NO_TIME_SET;
+        return VFW_E_MEDIA_TIME_NOT_SET;
     }
     *pTimeStart = m_start;
     *pTimeEnd = m_end;
     return NOERROR;
 }
 
-STDMETHODIMP MediaSample::SetTime(const REFERENCE_TIME* pTimeStart,
-                                  const REFERENCE_TIME* pTimeEnd)
+STDMETHODIMP MediaSample::SetTime(REFERENCE_TIME* pTimeStart,
+                                  REFERENCE_TIME* pTimeEnd)
 {
     if (pTimeStart == nullptr || pTimeEnd == nullptr) {
         m_hasTime = false;
@@ -162,8 +162,8 @@ STDMETHODIMP MediaSample::GetMediaTime(LONGLONG* pTimeStart,
     return VFW_E_MEDIA_TIME_NOT_SET;
 }
 
-STDMETHODIMP MediaSample::SetMediaTime(const LONGLONG* /*pTimeStart*/,
-                                       const LONGLONG* /*pTimeEnd*/)
+STDMETHODIMP MediaSample::SetMediaTime(LONGLONG* /*pTimeStart*/,
+                                       LONGLONG* /*pTimeEnd*/)
 {
     return NOERROR;
 }

@@ -11,6 +11,8 @@ class MemAllocator;
 
 class MediaSample : public IMediaSample
 {
+    friend class MemAllocator; // owns the pool and deletes samples
+
 public:
     MediaSample(MemAllocator* owner, uint8_t* buffer, long bufferSize);
 
@@ -24,8 +26,8 @@ public:
     STDMETHOD_(long, GetSize)() override;
     STDMETHOD(GetTime)(REFERENCE_TIME* pTimeStart,
                        REFERENCE_TIME* pTimeEnd) override;
-    STDMETHOD(SetTime)(const REFERENCE_TIME* pTimeStart,
-                       const REFERENCE_TIME* pTimeEnd) override;
+    STDMETHOD(SetTime)(REFERENCE_TIME* pTimeStart,
+                       REFERENCE_TIME* pTimeEnd) override;
     STDMETHOD(IsSyncPoint)() override;
     STDMETHOD(SetSyncPoint)(BOOL bIsSyncPoint) override;
     STDMETHOD(IsPreroll)() override;
@@ -37,8 +39,7 @@ public:
     STDMETHOD(IsDiscontinuity)() override;
     STDMETHOD(SetDiscontinuity)(BOOL bDiscontinuity) override;
     STDMETHOD(GetMediaTime)(LONGLONG* pTimeStart, LONGLONG* pTimeEnd) override;
-    STDMETHOD(SetMediaTime)(const LONGLONG* pTimeStart,
-                            const LONGLONG* pTimeEnd) override;
+    STDMETHOD(SetMediaTime)(LONGLONG* pTimeStart, LONGLONG* pTimeEnd) override;
 
     // Pool state (managed by the allocator; called under allocator control).
     bool inUse() const { return m_inUse; }

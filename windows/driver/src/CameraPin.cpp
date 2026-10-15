@@ -196,9 +196,19 @@ STDMETHODIMP CameraPin::Connect(IPin* pReceivePin, const AM_MEDIA_TYPE* pmt)
         return hr;
     }
 
+    // Frame delivery goes through the input pin's IMemInputPin interface.
+    IMemInputPin* memInput = nullptr;
+    hr = pReceivePin->QueryInterface(IID_IMemInputPin,
+                                     reinterpret_cast<void**>(&memInput));
+    if (FAILED(hr) || memInput == nullptr) {
+        freeMediaType(&mt);
+        return VFW_E_NO_ALLOCATOR;
+    }
+
     // Our own allocator: 3 buffers of exactly one frame each.
     auto* allocator = new (std::nothrow) MemAllocator();
     if (allocator == nullptr) {
+        memInput->Release();
         freeMediaType(&mt);
         return E_OUTOFMEMORY;
     }
@@ -209,15 +219,17 @@ STDMETHODIMP CameraPin::Connect(IPin* pReceivePin, const AM_MEDIA_TYPE* pmt)
     ALLOCATOR_PROPERTIES actual{};
     if (FAILED(allocator->SetProperties(&request, &actual)) ||
         FAILED(allocator->Commit()) ||
-        FAILED(pReceivePin->NotifyAllocator(allocator, FALSE))) {
+        FAILED(memInput->NotifyAllocator(allocator, FALSE))) {
         allocator->Decommit();
         allocator->Release();
+        memInput->Release();
         freeMediaType(&mt);
         return VFW_E_NO_ALLOCATOR;
     }
 
     m_connected = pReceivePin;
     m_connected->AddRef();
+    m_memInput = memInput;   // we keep our reference
     m_allocator = allocator; // we keep our reference
     m_mt = mt;               // take ownership
     m_frameIndex = 0;
@@ -237,6 +249,10 @@ STDMETHODIMP CameraPin::Disconnect()
         return S_FALSE;
     }
     Inactive();
+    if (m_memInput != nullptr) {
+        m_memInput->Release();
+        m_memInput = nullptr;
+    }
     m_connected->Release();
     m_connected = nullptr;
     if (m_allocator) {
@@ -329,7 +345,7 @@ STDMETHODIMP CameraPin::EnumMediaTypes(IEnumMediaTypes** ppEnum)
     if (ppEnum == nullptr) {
         return E_POINTER;
     }
-    auto* enumerator = new (std::nothrow) EnumMediaTypes(this);
+    auto* enumerator = new (std::nothrow) vcamdriver::EnumMediaTypes(this);
     if (enumerator == nullptr) {
         return E_OUTOFMEMORY;
     }
@@ -337,7 +353,8 @@ STDMETHODIMP CameraPin::EnumMediaTypes(IEnumMediaTypes** ppEnum)
     return S_OK;
 }
 
-STDMETHODIMP CameraPin::QueryInternalConnections(IPin*, ULONG*)
+STDMETHODIMP CameraPin::QueryInternalConnections(IPin** /*apPin*/,
+                                                 ULONG* /*nPin*/)
 {
     return E_NOTIMPL; // no internal connections
 }
@@ -355,6 +372,11 @@ STDMETHODIMP CameraPin::EndFlush()
 STDMETHODIMP CameraPin::EndOfStream()
 {
     return E_UNEXPECTED; // not called on output pins
+}
+
+STDMETHODIMP CameraPin::NewSegment(REFERENCE_TIME, REFERENCE_TIME, double)
+{
+    return E_NOTIMPL; // segments are announced by the source, not asked for
 }
 
 // --- IAMStreamConfig ----------------------------------------------------------
@@ -409,8 +431,8 @@ STDMETHODIMP CameraPin::GetNumberOfCapabilities(int* piCount, int* piSize)
     return S_OK;
 }
 
-STDMETHODIMP CameraPin::GetStreamCaps(int iIndex, BYTE* pSCC,
-                                      AM_MEDIA_TYPE** ppmt)
+STDMETHODIMP CameraPin::GetStreamCaps(int iIndex, AM_MEDIA_TYPE** ppmt,
+                                      BYTE* pSCC)
 {
     if (iIndex != 0) {
         return E_INVALIDARG;
@@ -495,6 +517,10 @@ void CameraPin::shutdown()
         m_connected->Release();
         m_connected = nullptr;
     }
+    if (m_memInput != nullptr) {
+        m_memInput->Release();
+        m_memInput = nullptr;
+    }
     if (m_allocator != nullptr) {
         m_allocator->Release();
         m_allocator = nullptr;
@@ -553,14 +579,15 @@ void CameraPin::threadLoop()
             sample->SetActualDataLength(
                 static_cast<LONG>(m_format.width * m_format.height * 2));
         }
-        const REFERENCE_TIME tStart =
+        REFERENCE_TIME tStart =
             static_cast<REFERENCE_TIME>(m_frameIndex * perFrame100ns);
-        const REFERENCE_TIME tEnd = tStart + perFrame100ns;
+        REFERENCE_TIME tEnd = tStart + perFrame100ns;
         sample->SetTime(&tStart, &tEnd);
         sample->SetSyncPoint(TRUE);
         sample->SetDiscontinuity(m_frameIndex == 0);
 
-        const HRESULT hr = m_connected->Receive(sample);
+        const HRESULT hr =
+            m_memInput != nullptr ? m_memInput->Receive(sample) : E_FAIL;
         sample->Release();
         if (hr == VFW_E_WRONG_STATE) {
             break; // graph is being torn down

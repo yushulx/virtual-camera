@@ -28,7 +28,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+# Script lives at <repo>\windows\scripts\build-windows.ps1 -> repo root is
+# two levels up from this script's directory.
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $BuildDir = Join-Path $RepoRoot "build\windows"
 $WindowsDir = Join-Path $RepoRoot "windows"
 $StageDir = Join-Path $WindowsDir "dist\stage"
@@ -71,8 +73,20 @@ Write-Host "==> virtual-camera $Version (platform: $Platform)"
 
 # --- 1. CMake configure + build ------------------------------------------------
 
-if (-not (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
-    throw "cmake.exe not found in PATH - install CMake 3.21+ from https://cmake.org"
+# Prefer a modern CMake: the VS-bundled one when the cmake in PATH is too
+# old for the "Visual Studio 17 2022" generator (needs CMake 3.21+).
+$cmakeExe = "cmake.exe"
+$cmakeInPath = Get-Command "cmake.exe" -ErrorAction SilentlyContinue
+if (-not $cmakeInPath) { throw "cmake.exe not found in PATH" }
+$cmakeVersion = (& $cmakeInPath.Source --version | Select-Object -First 1) -replace 'cmake version ', ''
+$vsCmake = Get-ChildItem "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\*" -Recurse `
+    -Filter "cmake.exe" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -like "*CMake\CMake\bin\cmake.exe" } |
+    Select-Object -First 1
+if ($vsCmake -and ($cmakeVersion -notmatch '^\d+' -or
+        [version]($cmakeVersion -replace '^(\d+\.\d+\.\d+).*', '$1') -lt [version]"3.21")) {
+    $cmakeExe = $vsCmake.FullName
+    Write-Host "==> PATH cmake ($cmakeVersion) is too old; using $cmakeExe"
 }
 
 $cmakeArgs = @(
@@ -91,11 +105,11 @@ if ($qtRoot) {
     Write-Host "==> Qt root: $qtRoot"
 }
 Write-Host "==> cmake $($cmakeArgs -join ' ')"
-& cmake.exe @cmakeArgs
+& $cmakeExe @cmakeArgs
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
 Write-Host "==> cmake --build (Release)"
-& cmake.exe --build $BuildDir --config Release
+& $cmakeExe --build $BuildDir --config Release
 if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
 
 # --- 2. Stage the application + Qt runtime --------------------------------------

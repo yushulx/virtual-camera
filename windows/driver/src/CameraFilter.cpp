@@ -5,6 +5,11 @@
 
 #include <new>
 
+// Defined in the DirectShow errors header, which strmif.h does not pull in.
+#ifndef VFW_E_NOT_FOUND
+#define VFW_E_NOT_FOUND ((HRESULT)0x80040216L)
+#endif
+
 namespace vcamdriver {
 
 CameraFilter::CameraFilter()
@@ -145,7 +150,7 @@ STDMETHODIMP CameraFilter::EnumPins(IEnumPins** ppEnum)
     if (m_pin == nullptr) {
         return E_OUTOFMEMORY;
     }
-    auto* enumerator = new (std::nothrow) EnumPins(m_pin);
+    auto* enumerator = new (std::nothrow) vcamdriver::EnumPins(m_pin);
     if (enumerator == nullptr) {
         return E_OUTOFMEMORY;
     }
@@ -172,13 +177,8 @@ STDMETHODIMP CameraFilter::QueryFilterInfo(FILTER_INFO* pInfo)
     if (pInfo == nullptr) {
         return E_POINTER;
     }
-    wchar_t* name = static_cast<wchar_t*>(
-        CoTaskMemAlloc(sizeof(wchar_t) * (wcslen(m_name) + 1)));
-    if (name == nullptr) {
-        return E_OUTOFMEMORY;
-    }
-    wcscpy_s(name, wcslen(m_name) + 1, m_name);
-    pInfo->achName = name;
+    // FILTER_INFO::achName is a fixed-size array: copy into it.
+    wcsncpy_s(pInfo->achName, m_name, _TRUNCATE);
     pInfo->pGraph = m_graph;
     if (pInfo->pGraph != nullptr) {
         pInfo->pGraph->AddRef();

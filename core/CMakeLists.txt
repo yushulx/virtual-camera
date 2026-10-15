@@ -6,6 +6,8 @@ target_include_directories(vcamcore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_sources(vcamcore PRIVATE
+    include/vcam/CameraController.h
+    include/vcam/VideoSource.h
     src/CameraController.cpp
     src/Config.cpp
     src/ImageSource.cpp
@@ -18,5 +20,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(vcamcore PRIVATE src/V4L2Writer.cpp)
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Multimedia)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Multimedia)
 target_link_libraries(vcamcore PUBLIC Qt6::Core Qt6::Gui Qt6::Multimedia)

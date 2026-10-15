@@ -1,6 +1,7 @@
 #include "vcam/PatternSource.h"
 
 #include <QDateTime>
+#include <QGuiApplication>
 #include <QPainter>
 
 namespace vcam {
@@ -14,7 +15,7 @@ bool PatternSource::latestFrame(int width, int height, QImage* out)
         *out = QImage(width, height, QImage::Format_RGB32);
     }
 
-    // SMPTE-style color bars + a moving marker + a frame counter.
+    // SMPTE-style color bars + a moving marker.
     const QColor bars[8] = {
         QColor(192, 192, 192), QColor(192, 192, 0),  QColor(0, 192, 192),
         QColor(0, 192, 0),     QColor(192, 0, 192), QColor(192, 0, 0),
@@ -32,11 +33,15 @@ bool PatternSource::latestFrame(int width, int height, QImage* out)
     const int markerX = static_cast<int>((now / 10) % width);
     p.fillRect(markerX, 0, 8, height * 3 / 4, Qt::white);
 
-    p.setPen(Qt::white);
-    p.setFont(QFont(QString::fromLatin1("Arial"), height / 24));
-    p.drawText(QRect(0, height * 3 / 4, width, height / 4),
-               Qt::AlignCenter,
-               QStringLiteral("Virtual Camera - test pattern"));
+    // Text rendering needs the font database (QGuiApplication). Headless
+    // processes that only run a QCoreApplication skip it.
+    if (QGuiApplication::instance() != nullptr) {
+        p.setPen(Qt::white);
+        p.setFont(QFont(QString::fromLatin1("Arial"), height / 24));
+        p.drawText(QRect(0, height * 3 / 4, width, height / 4),
+                   Qt::AlignCenter,
+                   QStringLiteral("Virtual Camera - test pattern"));
+    }
     p.end();
     return true;
 }

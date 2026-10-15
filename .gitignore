@@ -42,3 +42,8 @@ windows/build/
 
 # WorkBuddy workspace metadata
 .workbuddy/
+
+# Local verification helpers (machine-specific paths)
+build-local-win.ps1
+build-local-win.bat
+Testing/

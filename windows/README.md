@@ -31,7 +31,7 @@ regsvr32 driver\VirtualCameraDriver.dll     :: admin prompt, once
 
 ## Build from source
 
-Requirements: CMake 3.21+, Visual Studio 2022 (C++ workload), Qt 6.5+ for
+Requirements: CMake 3.21+, Visual Studio 2022 (C++ workload), Qt 6.4+ for
 MSVC, Inno Setup 6 (optional, for the installer).
 
 ```powershell

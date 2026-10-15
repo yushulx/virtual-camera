@@ -42,7 +42,7 @@ extern "C" HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid,
     if (ppv == nullptr) {
         return E_POINTER;
     }
-    if (rclsid != vcamdriver::CLSID_VirtualCameraFilter) {
+    if (rclsid != CLSID_VirtualCameraFilter) {
         return CLASS_E_CLASSNOTAVAILABLE;
     }
     auto* factory = new (std::nothrow) vcamdriver::ClassFactory();
