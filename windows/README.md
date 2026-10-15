@@ -50,10 +50,15 @@ Builds only (no packaging): the root `CMakeLists.txt` with the
 
 ## Test the camera
 
-1. Start **Virtual Camera**, pick a video or image, press *Start*.
-2. Open `docs/web-camera-test.html` in Chrome/Edge/Firefox and select
-   **Virtual Camera**.
-3. Without the controller running the camera shows the moving test
+1. Start **Virtual Camera** and choose the source:
+   * **Browse...** for a video or image - or select several images at once
+     (cycled like a slideshow, about 2 s each),
+   * **Open Folder...** to load a whole folder of images (natural order),
+   * or leave the field empty for the built-in test pattern.
+2. Press *Start*.
+3. Open `docs/web-camera-test.html` in Chrome/Edge/Firefox, allow camera
+   access and select **Virtual Camera** (the page preselects it).
+4. Without the controller running the camera shows the moving test
    pattern.
 
 ## Notes

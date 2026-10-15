@@ -1,8 +1,9 @@
-// guids.cpp - the single translation unit that instantiates the GUIDs.
+// guids.cpp - the single TU that instantiates the GUIDs (uuids.h has no
+// include guard: including it twice with initguid active would redefine
+// every GUID, so only this TU defines INITGUID and it must not pull in
+// <streams.h>).
 
-#include <initguid.h> // must come first: DEFINE_GUID now defines, not declares
+#include <initguid.h> // must come first: DEFINE_GUID now defines
 
-#include "Common.h" // our CLSIDs + <dshow.h> (pulls uuids.h: MEDIATYPE_Video,
-                    // MEDIASUBTYPE_YUY2, FORMAT_VideoInfo, ... now defined).
-                    // uuids.h has no include guard - include it exactly once,
-                    // which happens through Common.h.
+#include "Common.h" // pulls <dshow.h> -> <uuids.h> once: all DShow GUIDs
+                    // and CLSID_VirtualCameraFilter are instantiated here.

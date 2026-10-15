@@ -100,9 +100,12 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
 bool SharedFrameReader::readHeader(uint32_t* width, uint32_t* height,
                                    uint32_t* fpsHint)
 {
+    VCAM_TRACE_P("readHeader: enter");
     if (!ensureMapped()) {
+        VCAM_TRACE_P("readHeader: not mapped");
         return false;
     }
+    VCAM_TRACE_P("readHeader: mapped");
     const auto* live =
         reinterpret_cast<const vcam::SharedFrameHeader*>(m_view);
     if (live->magic != vcam::kSharedFrameMagic ||

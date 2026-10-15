@@ -9,7 +9,8 @@
 namespace vcam {
 
 struct CameraConfig {
-    QString sourcePath; // video or image file; empty = built-in test pattern
+    QString sourcePath; // video, image or folder; empty = built-in test pattern
+    QStringList sourceFiles; // multi-selected images (cycled like a folder)
     int width = 1280;
     int height = 720;
     int fps = 30;

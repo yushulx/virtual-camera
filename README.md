@@ -105,6 +105,8 @@ and select **Virtual Camera**.
 * A **video file** is played in an infinite loop and re-scaled in real time
   to the configured resolution.
 * A **static image** is scaled once and repeated at the configured frame rate.
+* A **folder of images** (or several files selected at once) is cycled like
+  a slideshow in natural file order, about two seconds per image.
 * Resolution presets 640x480 / 854x480 / 1280x720 / 1920x1080 and frame rates
   10 - 60 fps; the pixel format is YUYV (YUY2), 4:2:2, 16 bits per pixel.
 * The configuration (source file, resolution, frame rate, loop) persists
@@ -150,14 +152,6 @@ and select **Virtual Camera**.
   the extension serves a built-in test pattern, so the camera can be
   verified with nothing but the installed package.
 
-## Roadmap
-
-* Windows on ARM64 filter build (the code is architecture independent; only
-  the build matrix needs extending)
-* Media Foundation virtual camera (Windows 11 22H2+) alongside DirectShow
-  for apps that do not use DirectShow (e.g. the built-in Windows Camera app)
-* Universal (arm64 + x86_64) macOS app - the extension is already built
-  universal; the Qt app ships arm64 for now
 
 ## License
 

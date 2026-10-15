@@ -20,6 +20,8 @@
 #include <windows.h>
 #include <dshow.h>   // strmif.h + uuids.h (GUID declarations) + evcode.h + ...
 #include <vfwmsgs.h> // VFW_E_* status codes
+#include <ks.h>
+#include <ksmedia.h> // AMPROPSETID_Pin / AMPROPERTY_PIN_CATEGORY (IKsPropertySet)
 
 #include "vcam/SharedFrameProtocol.h"
 
@@ -30,21 +32,18 @@
 DEFINE_GUID(CLSID_VirtualCameraFilter, 0xd4a1f5b2, 0x6e38, 0x4c7a, 0x9b, 0x2e,
             0x1f, 0x8d, 0x3a, 0x5c, 0x7e, 0x64);
 
-// {860BB310-5D01-11D0-BD3B-00A0C911CE86}
-// DirectShow "Video Input Devices" category (CLSID_VideoInputDeviceCategory).
-DEFINE_GUID(VCAM_CLSID_VideoInputDeviceCategory, 0x860bb310, 0x5d01, 0x11d0,
-            0xbd, 0x3b, 0x00, 0xa0, 0xc9, 0x11, 0xce, 0x86);
-
-// {FB6C4281-0353-11D1-905F-0000C0CC16BA}  PIN_CATEGORY_CAPTURE.
-DEFINE_GUID(VCAM_PIN_CATEGORY_CAPTURE, 0xfb6c4281, 0x353, 0x11d1, 0x90, 0x5f,
-            0x00, 0x00, 0xc0, 0xcc, 0x16, 0xba);
-
 namespace vcamdriver {
-
-extern HMODULE g_module;
 
 // The friendly name under which the camera shows up.
 inline constexpr wchar_t kCameraName[] = L"Virtual Camera";
+
+#if defined(VCAM_DRIVER_TRACE)
+// Local-diagnosis trace: appends to a fixed file (unbuffered flush per line).
+void traceLine(const char* text);
+#define VCAM_TRACE_P(text) vcamdriver::traceLine(text)
+#else
+#define VCAM_TRACE_P(text) ((void)0)
+#endif
 
 // Debug logging via OutputDebugString (free in release builds).
 #if defined(_DEBUG)

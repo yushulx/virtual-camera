@@ -62,7 +62,8 @@ function Find-WinDeployQt {
 function Find-ISCC {
     $onPath = Get-Command "iscc.exe" -ErrorAction SilentlyContinue
     if ($onPath) { return $onPath.Source }
-    foreach ($base in @("${env:ProgramFiles(x86)}", "$env:ProgramFiles")) {
+    foreach ($base in @("${env:ProgramFiles(x86)}", "$env:ProgramFiles",
+                        "$env:LOCALAPPDATA\Programs")) {
         $candidate = Join-Path $base "Inno Setup 6\ISCC.exe"
         if (Test-Path $candidate) { return $candidate }
     }

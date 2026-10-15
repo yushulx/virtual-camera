@@ -10,6 +10,7 @@ target_sources(vcamcore PRIVATE
     include/vcam/VideoSource.h
     src/CameraController.cpp
     src/Config.cpp
+    src/FolderSource.cpp
     src/ImageSource.cpp
     src/PatternSource.cpp
     src/ShmFrameWriter.cpp

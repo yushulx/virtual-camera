@@ -36,6 +36,24 @@ Then, **once**:
 4. Pick a video/image file, press **Start**, then select **Virtual
    Camera** in your browser or conferencing app.
 
+## Test the camera
+
+1. Launch **VirtualCamera.app** (from the Applications folder).
+2. Choose the source - the same options as on Windows:
+   * **Browse...** for a video file (`mp4`, `mov`, ...) or an image - or
+     **select several images at once** (they are cycled like a slideshow,
+     about 2 s each);
+   * **Open Folder...** to load a whole folder of images (natural order);
+   * leave the field empty for the built-in moving test pattern.
+3. Pick the resolution and frame rate and press **Start**.
+4. Open [../docs/web-camera-test.html](../docs/web-camera-test.html) in
+   Chrome, Firefox or Safari (17.4+), allow camera access and select
+   **Virtual Camera** - the picker in the page preselects it automatically.
+   The camera also appears in FaceTime, Zoom and any AVFoundation app.
+
+No controller running? The camera extension keeps serving the moving test
+pattern, which is a quick way to verify the installation.
+
 ### Why the extra approval / developer mode?
 
 Since macOS 12.3 the only way to provide a virtual camera is a system

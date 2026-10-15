@@ -48,6 +48,7 @@ private:
 
     CameraController m_controller;
     CameraConfig m_config;
+    QStringList m_selectedFiles; // multi-selected images (browse dialog)
 
     QLineEdit* m_sourceEdit = nullptr;
     QLabel* m_sourceKindLabel = nullptr;

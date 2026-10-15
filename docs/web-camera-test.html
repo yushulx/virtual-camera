@@ -40,6 +40,13 @@
 </p>
 
 <p>
+    <label for="cameraSelect"><strong>Camera:</strong></label>
+    <select id="cameraSelect" style="min-width: 320px; padding: .3rem;">
+        <option value="">(default camera)</option>
+    </select>
+    <button id="refresh">Refresh list</button>
+</p>
+<p>
     <button id="start">Start camera</button>
     <button id="snapshot">Snapshot</button>
     <button id="stop">Stop</button>
@@ -90,6 +97,7 @@ function showTrackInfo() {
 
 async function listDevices() {
     const tbody = document.querySelector("#devices tbody");
+    const select = document.getElementById("cameraSelect");
     tbody.innerHTML = "";
     let devices = [];
     try {
@@ -98,6 +106,8 @@ async function listDevices() {
         log("enumerateDevices failed: " + e.message, "err");
         return;
     }
+    const previous = select.value;
+    select.innerHTML = '<option value="">(default camera)</option>';
     for (const device of devices) {
         const row = document.createElement("tr");
         const cells = [
@@ -110,19 +120,44 @@ async function listDevices() {
             td.textContent = text;
             row.appendChild(td);
         }
-        if (device.kind === "videoinput" &&
-            /virtual camera/i.test(device.label)) {
-            row.cells[0].className = "ok";
-            log("virtual camera visible: " + device.label, "ok");
+        if (device.kind === "videoinput") {
+            if (/virtual camera/i.test(device.label)) {
+                row.cells[0].className = "ok";
+                log("virtual camera visible: " + device.label, "ok");
+            }
+            const option = document.createElement("option");
+            option.value = device.deviceId;
+            option.textContent = device.label ||
+                ("camera " + device.deviceId.slice(0, 8));
+            if (device.deviceId === previous) {
+                option.selected = true;
+            }
+            select.appendChild(option);
         }
         tbody.appendChild(row);
     }
+    // Preselect the virtual camera when present.
+    if (!previous) {
+        for (const option of select.options) {
+            if (/virtual camera/i.test(option.textContent)) {
+                select.value = option.value;
+                break;
+            }
+        }
+    }
 }
+
+document.getElementById("refresh").addEventListener("click", listDevices);
 
 document.getElementById("start").addEventListener("click", async () => {
     try {
-        log("requesting getUserMedia({video: true}) ...");
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const selected = document.getElementById("cameraSelect").value;
+        const constraints = selected
+            ? { video: { deviceId: { exact: selected } } }
+            : { video: true };
+        log("requesting getUserMedia(" + JSON.stringify(constraints.video) +
+            ") ...");
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         const track = stream.getVideoTracks()[0];
         log("camera opened: " + (track.label || "(no label)"), "ok");

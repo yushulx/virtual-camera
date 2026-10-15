@@ -5,6 +5,7 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDir>
 #include <QCoreApplication>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -113,11 +114,14 @@ void MainWindow::buildUi()
     auto* sourceRow = new QHBoxLayout();
     m_sourceEdit = new QLineEdit(sourceGroup);
     m_sourceEdit->setPlaceholderText(
-        tr("Leave empty for the built-in test pattern"));
+        tr("Video file, image file, folder, or several images (empty = test "
+           "pattern)"));
     m_sourceEdit->setClearButtonEnabled(true);
     auto* browseButton = new QPushButton(tr("Browse..."), sourceGroup);
+    auto* folderButton = new QPushButton(tr("Open Folder..."), sourceGroup);
     sourceRow->addWidget(m_sourceEdit, 1);
     sourceRow->addWidget(browseButton);
+    sourceRow->addWidget(folderButton);
     m_sourceKindLabel = new QLabel(sourceGroup);
     sourceLayout->addLayout(sourceRow);
     sourceLayout->addWidget(m_sourceKindLabel);
@@ -189,6 +193,15 @@ void MainWindow::buildUi()
 
     // --- wiring ------------------------------------------------------------
     connect(browseButton, &QPushButton::clicked, this, &MainWindow::browseSource);
+    connect(folderButton, &QPushButton::clicked, this, [this]() {
+        const QString folder = QFileDialog::getExistingDirectory(
+            this, tr("Select a folder of images (cycled as a slideshow)"));
+        if (!folder.isEmpty()) {
+            m_selectedFiles.clear();
+            m_sourceEdit->setText(folder);
+            saveConfig();
+        }
+    });
     connect(m_startStopButton, &QPushButton::clicked, this,
             &MainWindow::startStopClicked);
 #if defined(Q_OS_MACOS)
@@ -198,7 +211,17 @@ void MainWindow::buildUi()
     auto markDirty = [this] {
         m_sourceKindLabel->setText(sourceKind());
     };
-    connect(m_sourceEdit, &QLineEdit::textChanged, this, markDirty);
+    connect(m_sourceEdit, &QLineEdit::textChanged, this, [this, markDirty]() {
+        // A manual edit invalidates a previous multi-file selection.
+        if (!m_selectedFiles.isEmpty() &&
+            m_sourceEdit->text() !=
+                tr("%1 (+%2 more images)")
+                    .arg(m_selectedFiles.first())
+                    .arg(m_selectedFiles.size() - 1)) {
+            m_selectedFiles.clear();
+        }
+        markDirty();
+    });
     m_sourceKindLabel->setText(sourceKind());
 }
 
@@ -213,6 +236,10 @@ CameraConfig MainWindow::configFromUi() const
 {
     CameraConfig cfg;
     cfg.sourcePath = m_sourceEdit->text().trimmed();
+    cfg.sourceFiles = m_selectedFiles;
+    if (!m_selectedFiles.isEmpty()) {
+        cfg.sourcePath = m_selectedFiles.first(); // anchor for reloading
+    }
     const QString resolution = m_resolutionCombo->currentText();
     const QStringList parts = resolution.split(QLatin1Char('x'));
     if (parts.size() == 2) {
@@ -229,7 +256,14 @@ CameraConfig MainWindow::configFromUi() const
 
 void MainWindow::applyConfig(const CameraConfig& cfg)
 {
-    m_sourceEdit->setText(cfg.sourcePath);
+    m_selectedFiles = cfg.sourceFiles;
+    if (m_selectedFiles.size() > 1) {
+        m_sourceEdit->setText(tr("%1 (+%2 more images)")
+                                  .arg(m_selectedFiles.first())
+                                  .arg(m_selectedFiles.size() - 1));
+    } else {
+        m_sourceEdit->setText(cfg.sourcePath);
+    }
     const QString resolution =
         QStringLiteral("%1x%2").arg(cfg.width).arg(cfg.height);
     int index = m_resolutionCombo->findText(resolution);
@@ -260,12 +294,29 @@ void MainWindow::saveConfig()
 
 QString MainWindow::sourceKind() const
 {
+    if (m_selectedFiles.size() > 1) {
+        return tr("Source: %1 images (cycled, about 2 s each)")
+            .arg(m_selectedFiles.size());
+    }
     const QString path = m_sourceEdit->text().trimmed();
     if (path.isEmpty()) {
         return tr("Source: built-in test pattern");
     }
-    if (!QFileInfo::exists(path)) {
+    const QFileInfo info(path);
+    if (!info.exists()) {
         return tr("Source: file not found");
+    }
+    if (info.isDir()) {
+        static const QStringList filters = {
+            QStringLiteral("*.png"), QStringLiteral("*.jpg"),
+            QStringLiteral("*.jpeg"), QStringLiteral("*.bmp"),
+            QStringLiteral("*.webp"), QStringLiteral("*.gif"),
+            QStringLiteral("*.tif"), QStringLiteral("*.tiff"),
+        };
+        const int count =
+            QDir(path).entryList(filters, QDir::Files | QDir::Readable).size();
+        return tr("Source: folder with %1 images (cycled, about 2 s each)")
+            .arg(count);
     }
     QImageReader reader(path);
     if (reader.canRead()) {
@@ -276,15 +327,23 @@ QString MainWindow::sourceKind() const
 
 void MainWindow::browseSource()
 {
-    const QString path = QFileDialog::getOpenFileName(
-        this, tr("Select a video or image file"), QString(),
+    const QStringList files = QFileDialog::getOpenFileNames(
+        this, tr("Select a video file, or one or more image files"), QString(),
         tr("Media files (*.mp4 *.mov *.mkv *.webm *.avi *.m4v *.mpg *.mpeg "
            "*.ts *.flv *.wmv *.png *.jpg *.jpeg *.bmp *.webp *.gif *.tiff);; "
            "All files (*)"));
-    if (!path.isEmpty()) {
-        m_sourceEdit->setText(path);
-        saveConfig();
+    if (files.isEmpty()) {
+        return;
     }
+    if (files.size() == 1) {
+        m_sourceEdit->setText(files.first());
+    } else {
+        m_selectedFiles = files;
+        m_sourceEdit->setText(tr("%1 (+%2 more images)")
+                                  .arg(files.first())
+                                  .arg(files.size() - 1));
+    }
+    saveConfig();
 }
 
 void MainWindow::startStopClicked()

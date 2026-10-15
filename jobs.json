@@ -1,0 +1,434 @@
+{
+  "total_count": 5,
+  "jobs": [
+    {
+      "id": 116331564814,
+      "run_id": 38707835292,
+      "workflow_name": "Build installers",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/yushulx/virtual-camera/actions/runs/38707835292",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKipQs8AAAAbFebPDg",
+      "head_sha": "536af600394231619d4b5597b9c3c5ce1e0922ef",
+      "url": "https://api.github.com/repos/yushulx/virtual-camera/actions/jobs/116331564814",
+      "html_url": "https://github.com/yushulx/virtual-camera/actions/runs/38707835292/job/116331564814",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T08:44:35Z",
+      "started_at": "2026-10-15T08:44:38Z",
+      "completed_at": "2026-10-15T08:44:41Z",
+      "name": "Resolve version",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T08:44:38Z",
+          "completed_at": "2026-10-15T08:44:39Z"
+        },
+        {
+          "name": "Determine version and release",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T08:44:39Z",
+          "completed_at": "2026-10-15T08:44:39Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T08:44:39Z",
+          "completed_at": "2026-10-15T08:44:39Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/yushulx/virtual-camera/check-runs/116331564814",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000006995,
+      "runner_name": "GitHub Actions 1000006995",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116331606029,
+      "run_id": 38707835292,
+      "workflow_name": "Build installers",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/yushulx/virtual-camera/actions/runs/38707835292",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKipQs8AAAAbFedwDQ",
+      "head_sha": "536af600394231619d4b5597b9c3c5ce1e0922ef",
+      "url": "https://api.github.com/repos/yushulx/virtual-camera/actions/jobs/116331606029",
+      "html_url": "https://github.com/yushulx/virtual-camera/actions/runs/38707835292/job/116331606029",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T08:44:41Z",
+      "started_at": "2026-10-15T08:44:45Z",
+      "completed_at": "2026-10-15T08:45:47Z",
+      "name": "Linux package",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T08:44:46Z",
+          "completed_at": "2026-10-15T08:44:46Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T08:44:46Z",
+          "completed_at": "2026-10-15T08:44:47Z"
+        },
+        {
+          "name": "Install the build dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T08:44:47Z",
+          "completed_at": "2026-10-15T08:45:14Z"
+        },
+        {
+          "name": "Unit tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-15T08:45:14Z",
+          "completed_at": "2026-10-15T08:45:28Z"
+        },
+        {
+          "name": "v4l2loopback smoke test (best effort)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-15T08:45:28Z",
+          "completed_at": "2026-10-15T08:45:42Z"
+        },
+        {
+          "name": "Build the .deb",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-15T08:45:42Z",
+          "completed_at": "2026-10-15T08:45:44Z"
+        },
+        {
+          "name": "Inspect the package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T08:45:44Z",
+          "completed_at": "2026-10-15T08:45:44Z"
+        },
+        {
+          "name": "Upload the package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-15T08:45:44Z",
+          "completed_at": "2026-10-15T08:45:45Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-15T08:45:45Z",
+          "completed_at": "2026-10-15T08:45:45Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-15T08:45:45Z",
+          "completed_at": "2026-10-15T08:45:45Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/yushulx/virtual-camera/check-runs/116331606029",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000006996,
+      "runner_name": "GitHub Actions 1000006996",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116331606052,
+      "run_id": 38707835292,
+      "workflow_name": "Build installers",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/yushulx/virtual-camera/actions/runs/38707835292",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKipQs8AAAAbFedwJA",
+      "head_sha": "536af600394231619d4b5597b9c3c5ce1e0922ef",
+      "url": "https://api.github.com/repos/yushulx/virtual-camera/actions/jobs/116331606052",
+      "html_url": "https://github.com/yushulx/virtual-camera/actions/runs/38707835292/job/116331606052",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-15T08:44:41Z",
+      "started_at": "2026-10-15T08:44:45Z",
+      "completed_at": "2026-10-15T08:46:13Z",
+      "name": "Windows installer",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T08:44:46Z",
+          "completed_at": "2026-10-15T08:44:50Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T08:44:50Z",
+          "completed_at": "2026-10-15T08:44:55Z"
+        },
+        {
+          "name": "Install Qt 6.8.2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T08:44:55Z",
+          "completed_at": "2026-10-15T08:45:16Z"
+        },
+        {
+          "name": "Install Qt (fallback 6.5.3)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T08:45:16Z",
+          "completed_at": "2026-10-15T08:45:16Z"
+        },
+        {
+          "name": "Install Inno Setup",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-15T08:45:16Z",
+          "completed_at": "2026-10-15T08:45:21Z"
+        },
+        {
+          "name": "Build the app, the DirectShow filter and the packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-15T08:45:21Z",
+          "completed_at": "2026-10-15T08:46:08Z"
+        },
+        {
+          "name": "Show the packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-15T08:46:08Z",
+          "completed_at": "2026-10-15T08:46:08Z"
+        },
+        {
+          "name": "Upload the packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-15T08:46:08Z",
+          "completed_at": "2026-10-15T08:46:10Z"
+        },
+        {
+          "name": "Post Install Qt 6.8.2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-15T08:46:10Z",
+          "completed_at": "2026-10-15T08:46:10Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-15T08:46:10Z",
+          "completed_at": "2026-10-15T08:46:12Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-15T08:46:12Z",
+          "completed_at": "2026-10-15T08:46:12Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/yushulx/virtual-camera/check-runs/116331606052",
+      "labels": [
+        "windows-2022"
+      ],
+      "runner_id": 1000006997,
+      "runner_name": "GitHub Actions 1000006997",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116331606243,
+      "run_id": 38707835292,
+      "workflow_name": "Build installers",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/yushulx/virtual-camera/actions/runs/38707835292",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKipQs8AAAAbFedw4w",
+      "head_sha": "536af600394231619d4b5597b9c3c5ce1e0922ef",
+      "url": "https://api.github.com/repos/yushulx/virtual-camera/actions/jobs/116331606243",
+      "html_url": "https://github.com/yushulx/virtual-camera/actions/runs/38707835292/job/116331606243",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-15T08:44:41Z",
+      "started_at": "2026-10-15T08:44:48Z",
+      "completed_at": "2026-10-15T08:45:59Z",
+      "name": "macOS package",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T08:44:49Z",
+          "completed_at": "2026-10-15T08:44:52Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T08:44:52Z",
+          "completed_at": "2026-10-15T08:44:53Z"
+        },
+        {
+          "name": "Show the toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-15T08:44:53Z",
+          "completed_at": "2026-10-15T08:44:54Z"
+        },
+        {
+          "name": "Install Qt 6.8.2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-15T08:44:54Z",
+          "completed_at": "2026-10-15T08:45:25Z"
+        },
+        {
+          "name": "Install Qt (fallback native)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T08:45:25Z",
+          "completed_at": "2026-10-15T08:45:25Z"
+        },
+        {
+          "name": "Build the installer package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-15T08:45:25Z",
+          "completed_at": "2026-10-15T08:45:45Z"
+        },
+        {
+          "name": "Retry with the native architecture only",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 7,
+          "started_at": "2026-10-15T08:45:45Z",
+          "completed_at": "2026-10-15T08:45:55Z"
+        },
+        {
+          "name": "Verify the package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-15T08:45:55Z",
+          "completed_at": "2026-10-15T08:45:55Z"
+        },
+        {
+          "name": "Upload the package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-15T08:45:55Z",
+          "completed_at": "2026-10-15T08:45:55Z"
+        },
+        {
+          "name": "Post Install Qt 6.8.2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-15T08:45:55Z",
+          "completed_at": "2026-10-15T08:45:55Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-15T08:45:55Z",
+          "completed_at": "2026-10-15T08:45:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-15T08:45:56Z",
+          "completed_at": "2026-10-15T08:45:56Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/yushulx/virtual-camera/check-runs/116331606243",
+      "labels": [
+        "macos-14"
+      ],
+      "runner_id": 1000006998,
+      "runner_name": "GitHub Actions 1000006998",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 116332237045,
+      "run_id": 38707835292,
+      "workflow_name": "Build installers",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/yushulx/virtual-camera/actions/runs/38707835292",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKipQs8AAAAbFfEQ9Q",
+      "head_sha": "536af600394231619d4b5597b9c3c5ce1e0922ef",
+      "url": "https://api.github.com/repos/yushulx/virtual-camera/actions/jobs/116332237045",
+      "html_url": "https://github.com/yushulx/virtual-camera/actions/runs/38707835292/job/116332237045",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-10-15T08:46:14Z",
+      "started_at": "2026-10-15T08:46:14Z",
+      "completed_at": "2026-10-15T08:46:14Z",
+      "name": "Publish the release",
+      "steps": [
+
+      ],
+      "check_run_url": "https://api.github.com/repos/yushulx/virtual-camera/check-runs/116332237045",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 #include "vcam/CameraController.h"
 
 #include "vcam/FrameWriter.h"
+#include "vcam/FolderSource.h"
 #include "vcam/ImageSource.h"
 #include "vcam/MediaSource.h"
 #include "vcam/PatternSource.h"
@@ -45,6 +46,17 @@ std::unique_ptr<MediaSource>
 CameraController::makeSource(const CameraConfig& cfg, QString* error)
 {
     const QString path = cfg.sourcePath;
+
+    // Multiple selected images: cycle them like a folder slideshow.
+    if (cfg.sourceFiles.size() > 1) {
+        auto source = std::make_unique<FolderSource>();
+        source->setFramesPerImage(std::max(1, cfg.fps * 2)); // ~2 s per image
+        if (!source->loadFiles(cfg.sourceFiles, error)) {
+            return nullptr;
+        }
+        return source;
+    }
+
     if (path.isEmpty()) {
         // No file selected: run the built-in test pattern.
         return std::make_unique<PatternSource>();
@@ -63,6 +75,16 @@ CameraController::makeSource(const CameraConfig& cfg, QString* error)
     if (videoSuffixes.contains(suffix)) {
         auto source = std::make_unique<VideoSource>(path, cfg.loop);
         if (!source->start(error)) {
+            return nullptr;
+        }
+        return source;
+    }
+
+    // A directory: cycle all images inside it as a slideshow.
+    if (QFileInfo(path).isDir()) {
+        auto source = std::make_unique<FolderSource>();
+        source->setFramesPerImage(std::max(1, cfg.fps * 2)); // ~2 s per image
+        if (!source->load(path, error)) {
             return nullptr;
         }
         return source;

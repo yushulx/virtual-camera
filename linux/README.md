@@ -32,10 +32,27 @@ sudo modprobe v4l2loopback exclusive_caps=1 card_label="Virtual Camera" max_devi
 Then start **Virtual Camera**, pick a video or image, press *Start* and
 select the camera in the browser (see `docs/web-camera-test.html`).
 
-Headless / CI:
+## Test the camera
+
+1. Start **Virtual Camera** (application menu or `virtual-camera`).
+2. Choose the source - the same options as on Windows:
+   * **Browse...** for a video file (`mp4`, `mkv`, ...) or an image - or
+     **select several images at once** (they are cycled like a slideshow,
+     about 2 s each);
+   * **Open Folder...** to load a whole folder of images (natural order,
+     e.g. `img2.png` before `img10.png`);
+   * leave the field empty for the built-in moving test pattern.
+3. Pick the resolution and frame rate and press **Start** (the controller
+   starts writing frames into the v4l2loopback device).
+4. Open [../docs/web-camera-test.html](../docs/web-camera-test.html) in
+   Chrome or Firefox, allow camera access and select **Virtual Camera** -
+   the picker in the page preselects it automatically.
+
+Headless / CI (no GUI, same pipeline):
 
 ```bash
 QT_QPA_PLATFORM=offscreen virtual-camera-cli --pattern --duration 10
+QT_QPA_PLATFORM=offscreen virtual-camera-cli --source /path/video.mp4 --duration 30
 virtual-camera-cli --list-devices
 ```
 

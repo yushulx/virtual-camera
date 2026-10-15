@@ -30,6 +30,16 @@ add_subdirectory(cli)
 if(WIN32)
     # The DirectShow capture source filter (registered as a system camera).
     add_subdirectory(windows/driver)
+    # Diagnostic tool: enumerates capture devices like a browser does.
+    add_executable(enum-cameras tools/enum-cameras.cpp)
+    target_link_libraries(enum-cameras PRIVATE
+        ole32 oleaut32 advapi32 strmiids)
+    target_compile_definitions(enum-cameras PRIVATE UNICODE _UNICODE)
+    # Diagnostic tool: runs the capture graph end to end.
+    add_executable(graph-test tools/graph-test.cpp)
+    target_link_libraries(graph-test PRIVATE
+        ole32 oleaut32 strmiids)
+    target_compile_definitions(graph-test PRIVATE UNICODE _UNICODE)
 endif()
 
 if(VCAM_BUILD_TESTS)

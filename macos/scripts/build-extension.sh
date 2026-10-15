@@ -32,7 +32,9 @@ build_arch() {
     local out="$BUILD_DIR/bin-$arch"
     mkdir -p "$out"
     echo "==> compiling the camera extension ($arch)"
-    swiftc -parse-as-library -O \
+    # NOTE: no -parse-as-library: main.swift carries top-level statements
+    # (the program entry), exactly like Apple's camera extension template.
+    swiftc -O \
         -target "$arch-apple-macos$MACOS_MIN" \
         -framework CoreMediaIO -framework CoreMedia -framework CoreVideo \
         -framework Foundation \

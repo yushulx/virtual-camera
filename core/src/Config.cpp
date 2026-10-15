@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
@@ -46,6 +47,9 @@ CameraConfig CameraConfig::load()
     }
     const QJsonObject obj = doc.object();
     cfg.sourcePath = obj.value("sourcePath").toString();
+    for (const QJsonValue& value : obj.value("sourceFiles").toArray()) {
+        cfg.sourceFiles.append(value.toString());
+    }
     cfg.width = obj.value("width").toInt(cfg.width);
     cfg.height = obj.value("height").toInt(cfg.height);
     cfg.fps = obj.value("fps").toInt(cfg.fps);
@@ -69,6 +73,11 @@ void CameraConfig::save() const
     }
     QJsonObject obj;
     obj.insert("sourcePath", sourcePath);
+    QJsonArray files;
+    for (const QString& file : sourceFiles) {
+        files.append(file);
+    }
+    obj.insert("sourceFiles", files);
     obj.insert("width", width);
     obj.insert("height", height);
     obj.insert("fps", fps);
