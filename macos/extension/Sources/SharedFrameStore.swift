@@ -34,10 +34,13 @@ enum SharedFrame {
 }
 
 // OSAtomic is deprecated but still functional; wrapped here so the
-// deprecation warning does not leak into every call site.
+// deprecation warning does not leak into every call site. The frame header
+// stores UInt32; OSAtomicAdd32 wants an Int32 pointer, so re-bind it.
 @inline(__always)
-private func atomicLoad32(_ pointer: UnsafeMutablePointer<Int32>) -> Int32 {
-    OSAtomicAdd32(0, pointer)
+private func atomicLoad32(_ pointer: UnsafeMutablePointer<UInt32>) -> UInt32 {
+    let int32Pointer = UnsafeMutableRawPointer(pointer)
+        .assumingMemoryBound(to: Int32.self)
+    return UInt32(OSAtomicAdd32(0, int32Pointer))
 }
 
 final class SharedFrameStore {
@@ -58,9 +61,11 @@ final class SharedFrameStore {
         if region != nil {
             return true
         }
+        // mode_t() is required: without it Swift picks the variadic
+        // overload and reports "'shm_open' is unavailable".
         let descriptor = shm_open(SharedFrame.posixName,
                                   O_RDWR,
-                                  0o666)
+                                  mode_t(0o666))
         guard descriptor >= 0 else {
             return false
         }
