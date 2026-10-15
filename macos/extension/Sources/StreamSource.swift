@@ -141,7 +141,7 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
         }
 
         frameIndex = 0
-        let intervalNs = UInt64(1_000_000_000) / UInt64(max(1, fps))
+        let intervalNs = 1_000_000_000 / Int(max(1, fps))
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs))
         timer.setEventHandler { [weak self] in
@@ -151,7 +151,7 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
         self.timer = timer
     }
 
-    func stopStream() {
+    func stopStream() throws {
         timer?.cancel()
         timer = nil
     }
@@ -214,14 +214,14 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
             decodeTimeStamp: .invalid)
         var sampleBuffer: CMSampleBuffer?
         let status = CMSampleBufferCreateForImageBuffer(
-            kCFAllocatorDefault,
-            imageBuffer,
-            true,
-            nil,
-            nil,
-            format,
-            &timing,
-            &sampleBuffer)
+            allocator: kCFAllocatorDefault,
+            imageBuffer: imageBuffer,
+            dataReady: true,
+            makeDataReadyCallback: nil,
+            refcon: nil,
+            formatDescription: format,
+            sampleTiming: &timing,
+            sampleBufferOut: &sampleBuffer)
         guard status == noErr, let sb = sampleBuffer else {
             return
         }
