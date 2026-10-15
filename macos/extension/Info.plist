@@ -23,6 +23,10 @@
     <string>1.0.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
+    <key>CMIOExtensionMachServiceName</key>
+    <string>com.dynamsoft.virtualcamera.VirtualCameraExtension</string>
+    <key>NSSystemExtensionUsageDescriptionKey</key>
+    <string>Virtual Camera provides a software camera that plays a video file or a static image as a webcam.</string>
     <key>NSExtension</key>
     <dict>
         <key>NSExtensionPointIdentifier</key>

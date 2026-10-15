@@ -1,37 +1,51 @@
-// StreamSource.swift - the CMIOExtensionStreamSource: advertises the
-// format and serves frames from the shared memory region (test pattern
-// when the controller is not running).
+// StreamSource.swift - the CMIOExtensionStreamSource: advertises the stream
+// format and serves frames from the shared memory region (moving test
+// pattern when the controller application is not running).
 
-import CoreMediaIO
 import CoreMedia
+import CoreMediaIO
 import CoreVideo
 import Foundation
 
 final class StreamSource: NSObject, CMIOExtensionStreamSource {
 
-    var stream: CMIOExtensionStream?
+    private(set) var stream: CMIOExtensionStream!
 
     private var width: Int32 = SharedFrame.defaultWidth
     private var height: Int32 = SharedFrame.defaultHeight
-    private var fps: Int32 = SharedFrame.defaultFps
+    private let fps: Int32 = SharedFrame.defaultFps
+
+    private var formatDescription: CMFormatDescription?
+    private var pixelBufferPool: CVPixelBufferPool?
+    private var frameBuffer: UnsafeMutableRawPointer?
 
     private let frameStore = SharedFrameStore()
-    private var frameBuffer: UnsafeMutableRawPointer?
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.dynamsoft.virtualcamera.extension")
-    private var sequenceNumber: Int64 = 0
-    private var frameIndex: Int = 0
+    private var frameIndex = 0
+
+    init(localizedName: String, streamID: UUID, clientQueue: DispatchQueue?) {
+        super.init()
+        refreshFormat()
+        stream = CMIOExtensionStream(localizedName: localizedName,
+                                     streamID: streamID,
+                                     direction: .source,
+                                     clockType: .hostTime,
+                                     source: self)
+    }
 
     deinit {
+        timer?.cancel()
         free(frameBuffer)
     }
 
     // MARK: format
 
+    /// Re-read the controller's configuration from the shared memory region
+    /// and (re)build the format description and pixel buffer pool.
     private func refreshFormat() {
-        // Re-open lazily so the store follows the controller lifecycle.
         if !frameStore.isOpen, !frameStore.open() {
-            frameStore.close() // drop a possibly stale mapping
+            frameStore.close() // drop a stale mapping and retry below
             _ = frameStore.open()
         }
         if let dimensions = frameStore.readDimensions() {
@@ -41,12 +55,10 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
             width = SharedFrame.defaultWidth
             height = SharedFrame.defaultHeight
         }
-    }
 
-    private func makeFormatDescription() -> CMVideoFormatDescription? {
-        var formatDescription: CMVideoFormatDescription?
-        // 'yuvs' = YUYV 4:2:2 byte order (Y0 Cb Y1 Cr) - what we read from
-        // the shared memory region.
+        var description: CMFormatDescription?
+        // 'yuvs' = YUYV 4:2:2 byte order (Y0 Cb Y1 Cr) - what the shared
+        // memory region contains.
         let yuvs: FourCharCode = 0x79757673
         let status = CMVideoFormatDescriptionCreate(
             allocator: kCFAllocatorDefault,
@@ -54,58 +66,84 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
             width: width,
             height: height,
             extensions: nil,
-            formatDescriptionOut: &formatDescription)
-        guard status == noErr else {
-            return nil
+            formatDescriptionOut: &description)
+        guard status == noErr, let format = description else {
+            return
         }
-        return formatDescription
+        formatDescription = format
+
+        var pool: CVPixelBufferPool?
+        let attributes: NSDictionary = [
+            kCVPixelBufferWidthKey: width,
+            kCVPixelBufferHeightKey: height,
+            kCVPixelBufferPixelFormatTypeKey: yuvs,
+            kCVPixelBufferIOSurfacePropertiesKey: NSDictionary(),
+        ]
+        CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, attributes, &pool)
+        pixelBufferPool = pool
+
+        if frameBuffer == nil {
+            frameBuffer = malloc(SharedFrame.maxFrameBytes)
+        }
+    }
+
+    private var streamFormat: CMIOExtensionStreamFormat {
+        let maxFrameDuration = CMTime(value: 1, timescale: CMTimeScale(max(1, fps)))
+        return CMIOExtensionStreamFormat(formatDescription: formatDescription!,
+                                         maxFrameDuration: maxFrameDuration,
+                                         minFrameDuration: maxFrameDuration,
+                                         validFrameDurations: nil)
     }
 
     // MARK: CMIOExtensionStreamSource
 
-    func streamProperties(for stream: CMIOExtensionStream)
-        -> CMIOExtensionStreamProperties {
-        let properties = CMIOExtensionStreamProperties()
-        properties.name = "Virtual Camera"
-        properties.model = "Virtual Camera"
-        if let format = makeFormatDescription() {
-            properties.streamFormat = format
+    var formats: [CMIOExtensionStreamFormat] {
+        formatDescription != nil ? [streamFormat] : []
+    }
+
+    var activeFormatIndex = 0
+
+    var availableProperties: Set<CMIOExtensionProperty> {
+        [.streamActiveFormatIndex, .streamFrameDuration]
+    }
+
+    func streamProperties(forProperties properties: Set<CMIOExtensionProperty>)
+        throws -> CMIOExtensionStreamProperties {
+        let streamProperties = CMIOExtensionStreamProperties(dictionary: [:])
+        if properties.contains(.streamActiveFormatIndex) {
+            streamProperties.activeFormatIndex = activeFormatIndex
         }
-        return properties
+        if properties.contains(.streamFrameDuration) {
+            streamProperties.frameDuration =
+                CMTime(value: 1, timescale: CMTimeScale(max(1, fps)))
+        }
+        return streamProperties
     }
 
-    func setStreamProperties(_ properties: CMIOExtensionStreamProperties,
-                             for stream: CMIOExtensionStream) {
-        // No writable properties.
+    func setStreamProperties(_ streamProperties: CMIOExtensionStreamProperties) throws {
+        if let index = streamProperties.activeFormatIndex {
+            activeFormatIndex = index
+        }
     }
 
-    func supportedFormatDescriptions(for stream: CMIOExtensionStream)
-        -> [CMVideoFormatDescription] {
-        refreshFormat()
-        return [makeFormatDescription()].compactMap { $0 }
-    }
-
-    func stream(_ stream: CMIOExtensionStream,
-                didSetFormatDescription formatDescription: CMFormatDescription?) {
-        // The system picked the (only) format we advertise.
+    func authorizedToStartStream(for client: CMIOExtensionClient) -> Bool {
+        true
     }
 
     func startStream() throws {
         refreshFormat()
-        if frameBuffer == nil {
-            frameBuffer = malloc(SharedFrame.maxFrameBytes)
-        }
-        guard frameBuffer != nil else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(noErr))
+        guard formatDescription != nil, pixelBufferPool != nil,
+              frameBuffer != nil else {
+            throw NSError(domain: "com.dynamsoft.virtualcamera",
+                          code: -1,
+                          userInfo: [NSLocalizedDescriptionKey:
+                                "Could not prepare the stream format"])
         }
 
-        sequenceNumber = 0
         frameIndex = 0
-
         let intervalNs = UInt64(1_000_000_000) / UInt64(max(1, fps))
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now(),
-                       repeating: .nanoseconds(intervalNs))
+        timer.schedule(deadline: .now(), repeating: .nanoseconds(intervalNs))
         timer.setEventHandler { [weak self] in
             self?.sendFrame()
         }
@@ -121,29 +159,24 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
     // MARK: frame delivery
 
     private func sendFrame() {
-        guard let stream = stream else { return }
-        guard let format = makeFormatDescription() else { return }
-        let frameBytes = Int(width) * Int(height) * 2
-        guard frameBytes <= SharedFrame.maxFrameBytes, frameBytes > 0 else {
+        guard let stream = stream, let format = formatDescription,
+              let pool = pixelBufferPool, let buffer = frameBuffer else {
             return
         }
-        guard let buffer = frameBuffer else { return }
+        let frameBytes = Int(width) * Int(height) * 2
+        guard frameBytes > 0, frameBytes <= SharedFrame.maxFrameBytes else {
+            return
+        }
 
-        // Grab the latest frame; fall back to the moving test pattern so
-        // users can verify the camera even without the controller running.
+        // Grab the latest frame; fall back to the moving test pattern so the
+        // camera stays usable without the controller application.
         if !frameStore.isOpen {
             _ = frameStore.open()
         }
-        let gotFrame: Bool
+        var gotFrame = false
         if frameStore.isOpen {
-            if !frameStore.readLatest(into: buffer,
-                                      capacity: SharedFrame.maxFrameBytes) {
-                gotFrame = false
-            } else {
-                gotFrame = true
-            }
-        } else {
-            gotFrame = false
+            gotFrame = frameStore.readLatest(into: buffer,
+                                             capacity: SharedFrame.maxFrameBytes)
         }
         if !gotFrame {
             TestPattern.draw(into: buffer,
@@ -153,52 +186,49 @@ final class StreamSource: NSObject, CMIOExtensionStreamSource {
         }
         frameIndex += 1
 
-        // Wrap the bytes in a CMSampleBuffer (copied into malloc'd memory
-        // owned by the block buffer through the default allocator).
-        var blockBuffer: CMBlockBuffer?
-        let memory = malloc(frameBytes)!
-        memcpy(memory, buffer, frameBytes)
-        let blockStatus = CMBlockBufferCreateWithMemoryBlock(
-            allocator: kCFAllocatorDefault,
-            memoryBlock: memory,
-            blockLength: frameBytes,
-            blockAllocator: kCFAllocatorDefault,
-            customBlockSource: nil,
-            offsetToData: 0,
-            dataLength: frameBytes,
-            flags: 0,
-            blockBufferOut: &blockBuffer)
-        guard blockStatus == kCMBlockBufferNoErr, let block = blockBuffer else {
-            free(memory)
+        // Copy into a pixel buffer from the pool (rows may be padded).
+        var pixelBuffer: CVPixelBuffer?
+        CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
+        guard let imageBuffer = pixelBuffer else {
             return
         }
+        CVPixelBufferLockBaseAddress(imageBuffer, [])
+        if let base = CVPixelBufferGetBaseAddress(imageBuffer) {
+            let dstStride = CVPixelBufferGetBytesPerRow(imageBuffer)
+            let srcStride = Int(width) * 2
+            if dstStride == srcStride {
+                memcpy(base, buffer, frameBytes)
+            } else {
+                for row in 0..<Int(height) {
+                    memcpy(base + row * dstStride,
+                           buffer + row * srcStride,
+                           srcStride)
+                }
+            }
+        }
+        CVPixelBufferUnlockBaseAddress(imageBuffer, [])
 
         var timing = CMSampleTimingInfo(
             duration: CMTime(value: 1, timescale: CMTimeScale(max(1, fps))),
-            presentationTimeStamp: CMTime(
-                value: CMTimeValue(frameIndex),
-                timescale: CMTimeScale(max(1, fps))),
+            presentationTimeStamp: CMClockGetTime(CMClockGetHostTimeClock()),
             decodeTimeStamp: .invalid)
-
         var sampleBuffer: CMSampleBuffer?
-        let sampleStatus = CMSampleBufferCreate(
-            allocator: kCFAllocatorDefault,
-            dataBuffer: block,
-            dataReady: true,
-            makeDataReadyCallback: nil,
-            getByteHandler: nil,
-            numSamples: 1,
-            numSampleTimingEntries: 1,
-            sampleTimingArray: &timing,
-            numSampleSizeEntries: 0,
-            sampleSizeArray: nil,
-            sampleBufferOut: &sampleBuffer)
-        guard sampleStatus == noErr, let sample = sampleBuffer else {
+        let status = CMSampleBufferCreateForImageBuffer(
+            kCFAllocatorDefault,
+            imageBuffer,
+            true,
+            nil,
+            nil,
+            format,
+            &timing,
+            &sampleBuffer)
+        guard status == noErr, let sb = sampleBuffer else {
             return
         }
 
-        sequenceNumber += 1
-        stream.sendFrame(CMIOExtensionSampleBuffer(sampleBuffer: sample,
-                                                   sequenceNumber: sequenceNumber))
+        let hostTimeNs = UInt64(
+            CMClockGetTime(CMClockGetHostTimeClock()).seconds
+                * Double(NSEC_PER_SEC))
+        stream.send(sb, discontinuity: [], hostTimeInNanoseconds: hostTimeNs)
     }
 }

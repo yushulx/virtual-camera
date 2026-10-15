@@ -9,7 +9,7 @@
 // (see macos/scripts/package.sh) - then no developer mode is needed.
 
 #import <Foundation/Foundation.h>
-#import <SystemExtensions/OSSystemExtensionRequest.h>
+#import <SystemExtensions/SystemExtensions.h>
 
 @interface VCamSystemExtensionDelegate
     : NSObject <OSSystemExtensionRequestDelegate>
@@ -61,5 +61,5 @@ extern "C" void vcamMacActivateSystemExtension(
         [OSSystemExtensionRequest activationRequestForExtension:nsIdentifier
                                                             queue:dispatch_get_main_queue()];
     request.delegate = delegate;
-    [request submit];
+    [[OSSystemExtensionManager shared] submitRequest:request];
 }
