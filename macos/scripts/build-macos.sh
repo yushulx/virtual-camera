@@ -30,7 +30,15 @@ done
 
 # --- 1. the Qt app ---------------------------------------------------------------
 
+# Qt for find_package(): QTDIR / QT_ROOT_DIR (set by install-qt-action) when
+# the Qt bin dir is not already on the default search path.
+QT_PREFIX="${QTDIR:-${QT_ROOT_DIR:-}}"
 ARCH_FLAGS=()
+CMAKE_PREFIX_ARGS=()
+if [[ -n "$QT_PREFIX" ]]; then
+    echo "==> Qt root: $QT_PREFIX"
+    CMAKE_PREFIX_ARGS=(-DCMAKE_PREFIX_PATH="$QT_PREFIX")
+fi
 if [[ "$UNIVERSAL" -eq 1 ]]; then
     # Requires a universal Qt build; on failure fall back to the runner's
     # native architecture (the extension itself stays universal).
@@ -39,6 +47,7 @@ fi
 
 echo "==> cmake configure"
 cmake -S "$REPO_ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
+    "${CMAKE_PREFIX_ARGS[@]}" \
     "${ARCH_FLAGS[@]}"
 
 echo "==> cmake build"

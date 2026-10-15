@@ -82,6 +82,14 @@ $cmakeArgs = @(
     "-A", $Platform,
     "-DVCAM_BUILD_TESTS=OFF"
 )
+# Qt for find_package(): -QTDir wins, then the install-qt-action env vars.
+$qtRoot = $QTDir
+if (-not $qtRoot) { $qtRoot = [Environment]::GetEnvironmentVariable("QT_ROOT_DIR") }
+if (-not $qtRoot) { $qtRoot = [Environment]::GetEnvironmentVariable("QTDIR") }
+if ($qtRoot) {
+    $cmakeArgs += @("-DCMAKE_PREFIX_PATH=$qtRoot")
+    Write-Host "==> Qt root: $qtRoot"
+}
 Write-Host "==> cmake $($cmakeArgs -join ' ')"
 & cmake.exe @cmakeArgs
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
