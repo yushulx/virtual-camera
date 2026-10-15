@@ -39,3 +39,6 @@ windows/build/
 *.dll
 *.exe
 *.zip
+
+# WorkBuddy workspace metadata
+.workbuddy/
