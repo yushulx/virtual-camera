@@ -43,6 +43,13 @@ private func atomicLoad32(_ pointer: UnsafeMutablePointer<UInt32>) -> UInt32 {
     return UInt32(OSAtomicAdd32(0, int32Pointer))
 }
 
+// The SDK imports shm_open as a variadic C function on Apple platforms,
+// which Swift rejects ("Variadic function is unavailable"). Bind the real
+// symbol with the correct prototype instead.
+@_silgen_name("shm_open")
+private func shmOpenFixed(_ name: UnsafePointer<CChar>, _ oflag: Int32,
+                          _ mode: mode_t) -> Int32
+
 final class SharedFrameStore {
 
     private var fd: Int32 = -1
@@ -61,11 +68,9 @@ final class SharedFrameStore {
         if region != nil {
             return true
         }
-        // mode_t() is required: without it Swift picks the variadic
-        // overload and reports "'shm_open' is unavailable".
-        let descriptor = shm_open(SharedFrame.posixName,
-                                  O_RDWR,
-                                  mode_t(0o666))
+        let descriptor = shmOpenFixed(SharedFrame.posixName,
+                                      O_RDWR,
+                                      mode_t(0o666))
         guard descriptor >= 0 else {
             return false
         }
