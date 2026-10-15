@@ -26,7 +26,7 @@
 - (void)request:(OSSystemExtensionRequest*)request
     didFinishWithResult:(OSSystemExtensionRequestResult)result
 {
-    BOOL ok = (result == OSSystemExtensionRequestResultCompleted);
+    BOOL ok = (result == OSSystemExtensionRequestCompleted);
     NSString* message =
         ok ? @"Camera extension installed. Select \"Virtual Camera\" in your apps."
            : @"The system extension request did not complete.";
@@ -61,5 +61,5 @@ extern "C" void vcamMacActivateSystemExtension(
         [OSSystemExtensionRequest activationRequestForExtension:nsIdentifier
                                                             queue:dispatch_get_main_queue()];
     request.delegate = delegate;
-    [[OSSystemExtensionManager shared] submitRequest:request];
+    [[OSSystemExtensionManager sharedManager] submitRequest:request];
 }
