@@ -47,3 +47,8 @@ windows/build/
 build-local-win.ps1
 build-local-win.bat
 Testing/
+
+# Local helper scripts (machine-specific build helpers)
+build-*.bat
+ci-*.txt
+jobs.json
