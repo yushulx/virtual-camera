@@ -46,9 +46,10 @@ if [[ "$UNIVERSAL" -eq 1 ]]; then
 fi
 
 echo "==> cmake configure"
+# macOS bash 3.2: guard empty-array expansion under `set -u`.
 cmake -S "$REPO_ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
-    "${CMAKE_PREFIX_ARGS[@]}" \
-    "${ARCH_FLAGS[@]}"
+    ${CMAKE_PREFIX_ARGS[@]+"${CMAKE_PREFIX_ARGS[@]}"} \
+    ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
 
 echo "==> cmake build"
 cmake --build "$BUILD_DIR" --parallel

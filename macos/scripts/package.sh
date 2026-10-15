@@ -53,7 +53,12 @@ for arg in "$@"; do
 done
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
-    "$SCRIPT_DIR/build-macos.sh" "${EXTRA_BUILD_ARGS[@]}"
+    # macOS ships bash 3.2: "${arr[@]}" on an empty array trips `set -u`.
+    if [[ "${#EXTRA_BUILD_ARGS[@]}" -gt 0 ]]; then
+        "$SCRIPT_DIR/build-macos.sh" "${EXTRA_BUILD_ARGS[@]}"
+    else
+        "$SCRIPT_DIR/build-macos.sh"
+    fi
 fi
 
 APP="$BUILD_DIR/app/$APP_NAME"
