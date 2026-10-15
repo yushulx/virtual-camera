@@ -2,7 +2,7 @@
 #
 # install.sh - one-line installer for the macOS package.
 #
-#   curl -fsSL https://raw.githubusercontent.com/dynamsoft/virtual-camera/main/macos/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/yushulx/virtual-camera/main/macos/scripts/install.sh | bash
 #
 # Why: release packages are unsigned (or ad-hoc signed), so Gatekeeper
 # refuses to open a browser-downloaded copy ("Apple could not verify ...").
@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-REPO="${VCAM_REPO:-dynamsoft/virtual-camera}"
+REPO="${VCAM_REPO:-yushulx/virtual-camera}"
 PKG_PREFIX="VirtualCamera-"
 
 echo "==> fetching the latest release of $REPO"

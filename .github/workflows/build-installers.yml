@@ -316,7 +316,7 @@ jobs:
               builds:
 
               ```bash
-              curl -fsSL https://raw.githubusercontent.com/dynamsoft/virtual-camera/main/macos/scripts/install.sh | bash
+              curl -fsSL https://raw.githubusercontent.com/yushulx/virtual-camera/main/macos/scripts/install.sh | bash
               ```
 
               To ship a signed and notarized package, set the `MACOS_*`

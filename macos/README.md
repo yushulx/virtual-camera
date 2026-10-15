@@ -23,7 +23,7 @@ sudo installer -pkg VirtualCamera-1.0.0.pkg -target /
 or the one-line installer (no Gatekeeper friction, see below):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dynamsoft/virtual-camera/main/macos/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/yushulx/virtual-camera/main/macos/scripts/install.sh | bash
 ```
 
 Then, **once**:

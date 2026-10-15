@@ -29,7 +29,7 @@
 
 #define AppName        "Virtual Camera"
 #define AppPublisher   "Dynamsoft"
-#define AppUrl         "https://github.com/dynamsoft/virtual-camera"
+#define AppUrl         "https://github.com/yushulx/virtual-camera"
 
 [Setup]
 AppId={{E2B7A4C1-8F3D-4B5E-A6C9-0D1E2F3A4B58}

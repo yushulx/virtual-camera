@@ -70,7 +70,7 @@ Headless / CI (no GUI): `virtual-camera-cli --pattern --duration 10`.
    dialog, enables system extension developer mode for you):
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/dynamsoft/virtual-camera/main/macos/scripts/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/yushulx/virtual-camera/main/macos/scripts/install.sh | bash
    ```
 
 2. Open **VirtualCamera.app** (Applications folder) and click
