@@ -74,6 +74,7 @@ private:
     REFERENCE_TIME m_sampleTime = 0;
     REFERENCE_TIME m_interval = 333333; // 100ns units (30 fps)
     int m_frameIndex = 0;
+    ULONGLONG m_lastDeliverTick = 0; // pacing (GetTickCount64, ms)
 };
 
 class VirtualCamera : public CSource, public IAMStreamConfig

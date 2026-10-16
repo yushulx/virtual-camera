@@ -393,6 +393,21 @@ HRESULT VirtualCameraStream::FillBuffer(IMediaSample* sample)
 {
     CheckPointer(sample, E_POINTER);
 
+    // Pace the worker thread to the negotiated frame interval. Without this
+    // the delivery loop runs unbounded and the sample timestamps race far
+    // ahead of the reference clock - sinks (browsers) then drop every
+    // sample and the preview stays black.
+    const DWORD intervalMs =
+        static_cast<DWORD>(m_interval / 10000); // 100ns units -> ms
+    const ULONGLONG now = GetTickCount64();
+    if (m_lastDeliverTick != 0) {
+        const ULONGLONG elapsed = now - m_lastDeliverTick;
+        if (elapsed < intervalMs) {
+            ::Sleep(static_cast<DWORD>(intervalMs - elapsed));
+        }
+    }
+    m_lastDeliverTick = GetTickCount64();
+
     BYTE* data = nullptr;
     sample->GetPointer(&data);
     if (data == nullptr) {
