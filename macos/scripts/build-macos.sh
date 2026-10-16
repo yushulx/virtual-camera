@@ -85,6 +85,22 @@ fi
 echo "==> macdeployqt"
 "$DEPLOYQT" "$APP" -no-strip
 
+# macdeployqt misses frameworks in some Qt builds (seen with Homebrew Qt,
+# which enables D-Bus: QtGui links QtDBus.framework but it is not deployed).
+# Scan every Mach-O inside the app for Qt framework references and copy any
+# missing one from the Qt installation.
+QT_LIB_DIR="$(cd "$(dirname "$DEPLOYQT")/../lib" && pwd)"
+for ref in $(find "$APP/Contents" -type f -print0 |
+                 xargs -0 file 2>/dev/null | grep Mach-O | cut -d: -f1 |
+                 xargs otool -L 2>/dev/null |
+                 grep -oE '@rpath/Qt[A-Za-z]+\.framework' | sort -u); do
+    fw="${ref#@rpath/}"
+    if [[ ! -e "$APP/Contents/Frameworks/$fw" && -d "$QT_LIB_DIR/$fw" ]]; then
+        echo "==> macdeployqt missed $fw - copying from Qt"
+        cp -R "$QT_LIB_DIR/$fw" "$APP/Contents/Frameworks/"
+    fi
+done
+
 # --- 4. the camera extension -------------------------------------------------------
 
 EXT_ARCH=universal
@@ -98,19 +114,47 @@ cp -R "$BUILD_DIR/extension/VirtualCameraExtension.appex" \
       "$APP/Contents/PlugIns/"
 
 # --- 5. sign the bundle (inner first) ----------------------------------------------
+#
+# macdeployqt copies/patches Qt frameworks and plugin dylibs AFTER their
+# signatures were created, which leaves them broken. Signing only the outer
+# app bundle does NOT repair a broken nested signature - macOS then refuses
+# to spawn the app (RBSRequestErrorDomain Code=5 / NSPOSIXErrorDomain 163).
+# So re-seal every nested component first, then the app itself.
+
+sign_inner() {
+    local identity="$1"; shift
+    # bare dylibs: Qt plugins under PlugIns/ AND helper libs deployed at the
+    # top of Frameworks/ (e.g. liblcms2.2.dylib, libtiff.dylib, ...)
+    find "$APP/Contents" -name '*.dylib' -type f -print0 |
+        xargs -0 -I@ codesign --force "$@" --sign "$identity" @
+    # Qt frameworks (top level; they contain no nested bundles)
+    find "$APP/Contents/Frameworks" -maxdepth 1 -name '*.framework' -print0 |
+        xargs -0 -I@ codesign --force "$@" --sign "$identity" @
+}
 
 if [[ "$IDENTITY" != "-" ]]; then
     echo "==> codesigning VirtualCamera.app with: $IDENTITY"
+    sign_inner "$IDENTITY" --options runtime --timestamp
     codesign --force --options runtime --timestamp \
         --entitlements "$MACOS_DIR/app/VirtualCamera.entitlements" \
         --sign "$IDENTITY" "$APP"
 else
+    # NOTE: do NOT apply VirtualCamera.entitlements on the ad-hoc path.
+    # com.apple.developer.system-extension.install is a RESTRICTED
+    # entitlement that requires an Apple-provisioned profile; an ad-hoc
+    # signature carrying it is rejected by AMFI at spawn ("Launch failed",
+    # POSIX error 163, no crash report). With developer mode enabled the
+    # entitlement is not needed to activate the extension, so ad-hoc
+    # builds are signed without any entitlements.
     echo "==> codesigning VirtualCamera.app ad-hoc (developer mode required:"
     echo "    sudo systemextensionsctl developer on)"
-    codesign --force \
-        --entitlements "$MACOS_DIR/app/VirtualCamera.entitlements" \
-        --sign - "$APP"
+    sign_inner "-"
+    codesign --force --sign - "$APP"
 fi
+
+# Fail the build instead of shipping a bundle macOS refuses to launch.
+echo "==> verifying the signature"
+codesign --verify --deep --strict "$APP"
 
 echo "==> done: $APP"
 echo "    Launch it once and use 'Install camera extension...' to activate the"

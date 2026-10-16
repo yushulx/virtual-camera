@@ -77,23 +77,42 @@ void ShmFrameWriter::unmapRegion()
 
 #else // macOS / POSIX
 
+namespace {
+// shm_open + ftruncate; returns -1 on failure (errno set).
+int openShmRegion(const char* name, size_t bytes)
+{
+    const int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    if (fd < 0) {
+        return -1;
+    }
+    if (ftruncate(fd, static_cast<off_t>(bytes)) == 0) {
+        return fd;
+    }
+    close(fd);
+    return -1;
+}
+} // namespace
+
 bool ShmFrameWriter::mapRegion(QString* error)
 {
-    const int fd = shm_open(kShmPosixName, O_CREAT | O_RDWR, 0666);
+    int fd = openShmRegion(kShmPosixName, kSharedRegionBytes);
+    if (fd < 0 && errno == EINVAL) {
+        // A stale/corrupted object left by an earlier run can make ftruncate
+        // fail (EINVAL). Unlink it and retry once with a fresh object; the
+        // extension re-opens by name, so recreating it is always safe.
+        // (Only for EINVAL: any other errno is not a stale-object symptom,
+        // and unlinking an object another process may be using unguarded
+        // would be destructive.)
+        if (shm_unlink(kShmPosixName) == 0) {
+            fd = openShmRegion(kShmPosixName, kSharedRegionBytes);
+        }
+    }
     if (fd < 0) {
         if (error) {
-            *error = QStringLiteral("shm_open(%1) failed: %2")
+            *error = QStringLiteral("shm_open/ftruncate(%1) failed: %2")
                          .arg(QString::fromLatin1(kShmPosixName),
                               QString::fromLatin1(strerror(errno)));
         }
-        return false;
-    }
-    if (ftruncate(fd, kSharedRegionBytes) != 0) {
-        if (error) {
-            *error = QStringLiteral("ftruncate failed: %1")
-                          .arg(QString::fromLatin1(strerror(errno)));
-        }
-        close(fd);
         return false;
     }
     void* view = mmap(nullptr, kSharedRegionBytes, PROT_READ | PROT_WRITE,
