@@ -28,10 +28,13 @@ void yuyvToRgb24(const uint8_t* yuyv, uint8_t* rgb, int width, int height,
                 const int r = yy + ((91881 * v) >> 16);
                 const int g = yy - ((22554 * u + 46802 * v) >> 16);
                 const int b = yy + ((116130 * u) >> 16);
+                // MEDIASUBTYPE_RGB24 is a DIB: the byte order in memory is
+                // B, G, R (little-endian). Writing r/g/b directly swapped
+                // the red and blue channels in every sink.
                 uint8_t* pixel = dst + (x + k) * 3;
-                pixel[0] = static_cast<uint8_t>(r < 0 ? 0 : (r > 255 ? 255 : r));
+                pixel[0] = static_cast<uint8_t>(b < 0 ? 0 : (b > 255 ? 255 : b));
                 pixel[1] = static_cast<uint8_t>(g < 0 ? 0 : (g > 255 ? 255 : g));
-                pixel[2] = static_cast<uint8_t>(b < 0 ? 0 : (b > 255 ? 255 : b));
+                pixel[2] = static_cast<uint8_t>(r < 0 ? 0 : (r > 255 ? 255 : r));
             }
             src += 4;
         }

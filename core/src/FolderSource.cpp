@@ -3,7 +3,6 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
-#include <QMutex>
 
 #include <algorithm>
 
@@ -101,9 +100,11 @@ bool FolderSource::loadFiles(const QStringList& files, QString* error)
         return false;
     }
 
-    m_scaled.clear();
-    m_scaledWidth = m_scaledHeight = 0;
-    m_frameCount = 0;
+    {
+        QMutexLocker lock(&m_mutex);
+        m_cacheBySize.clear();
+        m_frameCount = 0;
+    }
     m_error.clear();
     return true;
 }
@@ -113,34 +114,35 @@ bool FolderSource::latestFrame(int width, int height, QImage* out)
     if (m_files.isEmpty() || out == nullptr) {
         return false;
     }
+    QMutexLocker lock(&m_mutex);
     const int imageCount = static_cast<int>(m_files.size());
     const int imageIndex = static_cast<int>(
         (m_frameCount / m_framesPerImage) % imageCount);
     ++m_frameCount;
 
-    // Scale lazily per (width, height); each image is decoded once.
-    if (m_scaled.size() != imageCount || m_scaledWidth != width ||
-        m_scaledHeight != height) {
-        m_scaled.assign(imageCount, QImage());
-        m_scaledWidth = width;
-        m_scaledHeight = height;
+    // Each (width, height) pair keeps its own decoded-and-scaled cache; the
+    // pacing thread and the GUI preview use different sizes concurrently.
+    const qint64 key = (static_cast<qint64>(width) << 32) | height;
+    std::vector<QImage>& cache = m_cacheBySize[key];
+    if (cache.size() != imageCount) {
+        cache.assign(imageCount, QImage());
     }
-    if (m_scaled[imageIndex].isNull()) {
+    if (cache[imageIndex].isNull()) {
         QImageReader reader(m_files[imageIndex]);
         reader.setAutoTransform(true);
         QImage image = reader.read();
         if (image.isNull()) {
-            // Skip unreadable files: show the previous slot instead.
-            m_scaled[imageIndex] = QImage(width, height, QImage::Format_RGB888);
-            m_scaled[imageIndex].fill(QColor(32, 32, 32));
+            // Skip unreadable files: show a dark placeholder instead.
+            cache[imageIndex] = QImage(width, height, QImage::Format_RGB888);
+            cache[imageIndex].fill(QColor(32, 32, 32));
         } else {
-            m_scaled[imageIndex] =
+            cache[imageIndex] =
                 image.scaled(width, height, Qt::IgnoreAspectRatio,
                              Qt::SmoothTransformation)
                     .convertToFormat(QImage::Format_RGB888);
         }
     }
-    *out = m_scaled[imageIndex];
+    *out = cache[imageIndex];
     return true;
 }
 
