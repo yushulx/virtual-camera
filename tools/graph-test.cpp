@@ -225,18 +225,45 @@ int wmain(int argc, WCHAR** argv)
         printf("Run: 0x%08lX\n", hr);
     }
 
-    Sleep(1000);
-    long size = 0;
-    hr = sampleGrabber ? sampleGrabber->GetCurrentBuffer(&size, nullptr) : E_FAIL;
-    if (SUCCEEDED(hr) && size > 0) {
+    auto dumpFrame = [&](const char* path) {
+        long size = 0;
+        HRESULT ghr = sampleGrabber
+                          ? sampleGrabber->GetCurrentBuffer(&size, nullptr)
+                          : E_FAIL;
+        if (FAILED(ghr) || size <= 0) {
+            printf("GetCurrentBuffer(%s): 0x%08lX (no frame)\n", path, ghr);
+            return;
+        }
         BYTE* buffer = static_cast<BYTE*>(CoTaskMemAlloc(size));
         sampleGrabber->GetCurrentBuffer(&size, (long*)buffer);
-        printf("delivered frame: %ld bytes (expected %d for 1280x720 YUY2)\n",
-               size, 1280 * 720 * 2);
+        printf("delivered frame: %ld bytes\n", size);
+        BITMAPFILEHEADER fh{};
+        BITMAPINFOHEADER ih{};
+        fh.bfType = 0x4D42; // 'BM'
+        fh.bfOffBits = sizeof(fh) + sizeof(ih);
+        fh.bfSize = fh.bfOffBits + size;
+        ih.biSize = sizeof(ih);
+        ih.biWidth = 1280;
+        ih.biHeight = 720;
+        ih.biPlanes = 1;
+        ih.biBitCount = 24;
+        ih.biCompression = BI_RGB;
+        ih.biSizeImage = size;
+        FILE* f = nullptr;
+        fopen_s(&f, path, "wb");
+        if (f) {
+            fwrite(&fh, sizeof(fh), 1, f);
+            fwrite(&ih, sizeof(ih), 1, f);
+            fwrite(buffer, 1, size, f);
+            fclose(f);
+            printf("wrote %s\n", path);
+        }
         CoTaskMemFree(buffer);
-    } else {
-        printf("GetCurrentBuffer: 0x%08lX (no frame delivered)\n", hr);
-    }
+    };
+    Sleep(500);
+    dumpFrame("D:/code/virtual-camera/build/frame1.bmp");
+    Sleep(2000);
+    dumpFrame("D:/code/virtual-camera/build/frame2.bmp");
     if (control) control->Stop();
 
     if (control) control->Release();

@@ -1,5 +1,7 @@
 #include "SharedFrameReader.h"
 
+#include <cstdio>
+
 namespace vcamdriver {
 
 SharedFrameReader::~SharedFrameReader()
@@ -52,21 +54,34 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
                                     uint32_t* width, uint32_t* height,
                                     uint32_t* stride)
 {
-    if (dst == nullptr || dstBytes < vcam::kMaxFrameBytes) {
+    // NOTE: dstBytes only has to fit the CURRENT frame (stride * height,
+    // validated below) - not kMaxFrameBytes. Requiring the maximum here
+    // made every caller that sized its buffer to the live resolution fall
+    // back to the test pattern.
+    if (dst == nullptr || dstBytes == 0) {
         return false;
     }
     if (!ensureMapped()) {
         return false;
     }
+    VCAM_TRACE_P("readLatest: mapped, reading");
     // Seqlock read: check sequence, copy, re-check. The atomic loads act as
     // full fences, so the copy cannot be reordered across them.
     for (int attempt = 0; attempt < 4; ++attempt) {
         const auto* live =
             reinterpret_cast<const vcam::SharedFrameHeader*>(m_view);
-        if (live->magic != vcam::kSharedFrameMagic ||
-            live->version != vcam::kSharedFrameVersion) {
+        VCAM_TRACE_P("readLatest: reading header fields");
+        const uint32_t magic = live->magic;
+        const uint32_t version = live->version;
+        char hmsg[96];
+        sprintf_s(hmsg, "readLatest: magic=%08lX version=%u", magic, version);
+        VCAM_TRACE_P(hmsg);
+        if (magic != vcam::kSharedFrameMagic ||
+            version != vcam::kSharedFrameVersion) {
+            VCAM_TRACE_P("readLatest: magic/version mismatch, remapping");
             closeMapping(); // the controller recreated the region
             if (!ensureMapped()) {
+                VCAM_TRACE_P("readLatest: remap failed");
                 return false;
             }
             continue;
@@ -81,10 +96,23 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
         const uint32_t s = live->stride;
         if (w == 0 || h == 0 || s != w * 2u ||
             static_cast<size_t>(s) * h > dstBytes) {
+            char msg[96];
+            sprintf_s(msg, "readLatest: bad dims w=%u h=%u s=%u dst=%zu", w,
+                      h, s, dstBytes);
+            VCAM_TRACE_P(msg);
             return false;
+        }
+        VCAM_TRACE_P("readLatest: checks passed");
+        {
+            char pmsg[128];
+            sprintf_s(pmsg, "readLatest: dst=%p src=%p bytes=%zu", dst,
+                      m_view + vcam::kSharedHeaderSize,
+                      static_cast<size_t>(s) * h);
+            VCAM_TRACE_P(pmsg);
         }
         memcpy(dst, m_view + vcam::kSharedHeaderSize,
                static_cast<size_t>(s) * h);
+        VCAM_TRACE_P("readLatest: memcpy done");
         const uint32_t seq2 = vcam::seqLoadAcquire(&live->frameSeq);
         if (seq1 != seq2) {
             continue; // torn read: retry

@@ -12,12 +12,15 @@ int dibStride(int width)
 }
 
 // YUYV (the shared memory format) -> RGB24 packed DIB rows.
+// With a positive biHeight the DIB rows are stored BOTTOM-UP: the last
+// buffer row is the top image row (this is what sinks like browsers
+// expect for RGB24 - softcam's transferToDIB does the same).
 void yuyvToRgb24(const uint8_t* yuyv, uint8_t* rgb, int width, int height,
                  int stride)
 {
     for (int y = 0; y < height; ++y) {
         const uint8_t* src = yuyv + static_cast<size_t>(y) * width * 2;
-        uint8_t* dst = rgb + static_cast<size_t>(y) * stride;
+        uint8_t* dst = rgb + static_cast<size_t>(height - 1 - y) * stride;
         for (int x = 0; x < width; x += 2) {
             const int y0 = src[0], u = src[1] - 128, y1 = src[2], v = src[3] - 128;
             for (int k = 0; k < 2 && x + k < width; ++k) {
@@ -46,7 +49,8 @@ void drawTestPatternRgb24(uint8_t* rgb, int width, int height, int stride,
     const int barsBottom = height * 3 / 4;
     const int markerX = width > 0 ? frameIndex % width : 0;
     for (int y = 0; y < height; ++y) {
-        uint8_t* row = rgb + static_cast<size_t>(y) * stride;
+        // Bottom-up DIB: buffer row (height - 1 - y) is image row y.
+        uint8_t* row = rgb + static_cast<size_t>(height - 1 - y) * stride;
         for (int x = 0; x < width; ++x) {
             const uint8_t* color =
                 y >= barsBottom ? kBars[7] : kBars[(x * 8 / (width ? width : 1)) % 8];
@@ -373,10 +377,18 @@ HRESULT VirtualCameraStream::deliverSharedFrame(uint8_t* rgb, int width,
         m_yuyv.resize(frameBytes);
     }
     uint32_t sw = 0, sh = 0, sstride = 0;
-    if (!m_reader.readLatest(m_yuyv.data(), m_yuyv.size(), &sw, &sh, &sstride) ||
-        static_cast<int>(sw) != width || static_cast<int>(sh) != height) {
-        return S_FALSE; // controller not running or resolution changed
+    if (!m_reader.readLatest(m_yuyv.data(), m_yuyv.size(), &sw, &sh, &sstride)) {
+        VCAM_TRACE_P("deliverSharedFrame: readLatest FAILED");
+        return S_FALSE; // controller not running or torn read
     }
+    if (static_cast<int>(sw) != width || static_cast<int>(sh) != height) {
+        char msg[96];
+        sprintf_s(msg, "deliverSharedFrame: dims mismatch %ux%u vs %dx%d", sw,
+                  sh, width, height);
+        VCAM_TRACE_P(msg);
+        return S_FALSE;
+    }
+    VCAM_TRACE_P("deliverSharedFrame: frame ok");
     yuyvToRgb24(m_yuyv.data(), rgb, width, height, stride);
     return S_OK;
 }

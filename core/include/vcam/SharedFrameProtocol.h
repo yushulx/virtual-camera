@@ -79,11 +79,22 @@ static_assert(kMaxFrameBytes >= kDefaultWidth * kDefaultHeight * 2,
 // MSVC: the _Interlocked* intrinsics are full fences and work on pages
 // mapped into multiple processes. GCC/Clang: __atomic builtins give the
 // same guarantees.
+//
+// IMPORTANT: the reader-side load must NOT be an interlocked read-modify
+// write: consumers map the region read-only (FILE_MAP_READ), and an
+// _InterlockedCompareExchange writes even when the values match, which
+// faults on a read-only view. Use a plain acquire load instead; on x86
+// loads are not reordered with other loads, and on ARM64
+// __iso_volatile_load32 provides the acquire semantics.
 
 inline uint32_t seqLoadAcquire(const volatile uint32_t* seq) {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && defined(_M_ARM64)
     return static_cast<uint32_t>(
-        _InterlockedCompareExchange(reinterpret_cast<volatile long*>(const_cast<uint32_t*>(seq)), 0, 0));
+        __iso_volatile_load32(reinterpret_cast<const volatile __int32*>(seq)));
+#elif defined(_MSC_VER)
+    const uint32_t value = *seq;
+    _ReadWriteBarrier();
+    return value;
 #else
     return __atomic_load_n(seq, __ATOMIC_ACQUIRE);
 #endif
