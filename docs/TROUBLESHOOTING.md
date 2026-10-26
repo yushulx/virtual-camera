@@ -41,7 +41,7 @@
 ## Black, green or frozen picture
 
 * The camera shows the **last frame** when the controller stops - by
-  design (v4l2loopback) or falls back to the **test pattern**
+  design (v4l2loopback), or for 2 seconds and then the **test pattern**
   (DirectShow/CMIO). A green/garbled picture on Linux means the consumer
   opened the camera before the writer produced a frame: start the
   controller first, then (re)open the camera in the app.

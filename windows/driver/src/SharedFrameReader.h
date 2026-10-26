@@ -14,10 +14,13 @@ public:
     ~SharedFrameReader();
 
     // Copy the latest frame into dst. Returns false when the controller is
-    // not running (no region) - the caller then falls back to the test
-    // pattern. `dst` must have room for kMaxFrameBytes.
+    // not running (no region) or the copy could not be completed; the caller
+    // keeps showing its previous frame. `dst` must have room for the current
+    // frame (stride * height). frameCount receives the writer's frame counter
+    // so the caller can skip reconverting a frame it already has.
     bool readLatest(uint8_t* dst, size_t dstBytes, uint32_t* width,
-                    uint32_t* height, uint32_t* stride);
+                    uint32_t* height, uint32_t* stride,
+                    uint32_t* frameCount = nullptr);
 
     // Header only (used to advertise the current format even when the
     // controller is not streaming yet).

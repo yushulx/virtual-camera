@@ -52,7 +52,7 @@ bool SharedFrameReader::ensureMapped()
 
 bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
                                     uint32_t* width, uint32_t* height,
-                                    uint32_t* stride)
+                                    uint32_t* stride, uint32_t* frameCount)
 {
     // NOTE: dstBytes only has to fit the CURRENT frame (stride * height,
     // validated below) - not kMaxFrameBytes. Requiring the maximum here
@@ -67,7 +67,15 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
     VCAM_TRACE_P("readLatest: mapped, reading");
     // Seqlock read: check sequence, copy, re-check. The atomic loads act as
     // full fences, so the copy cannot be reordered across them.
-    for (int attempt = 0; attempt < 4; ++attempt) {
+    //
+    // A writer that is preempted between seqBegin() and seqEnd() leaves the
+    // sequence odd for as long as it stays descheduled - during a JPEG decode
+    // burst that can outlast one frame interval. Giving up after a couple of
+    // attempts makes the pin repeat the test pattern for a frame, which shows
+    // up as a visible flash in every consumer. Retry for as long as a frame
+    // interval lasts instead; the caller re-sends its previous frame if this
+    // still fails.
+    for (int attempt = 0; attempt < 64; ++attempt) {
         const auto* live =
             reinterpret_cast<const vcam::SharedFrameHeader*>(m_view);
         VCAM_TRACE_P("readLatest: reading header fields");
@@ -113,6 +121,7 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
         memcpy(dst, m_view + vcam::kSharedHeaderSize,
                static_cast<size_t>(s) * h);
         VCAM_TRACE_P("readLatest: memcpy done");
+        const uint32_t count = live->frameCount;
         const uint32_t seq2 = vcam::seqLoadAcquire(&live->frameSeq);
         if (seq1 != seq2) {
             continue; // torn read: retry
@@ -120,6 +129,9 @@ bool SharedFrameReader::readLatest(uint8_t* dst, size_t dstBytes,
         *width = w;
         *height = h;
         *stride = s;
+        if (frameCount != nullptr) {
+            *frameCount = count;
+        }
         return true;
     }
     return false;

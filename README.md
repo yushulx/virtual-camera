@@ -59,8 +59,15 @@ A ready-to-use browser test page is bundled: [docs/web-camera-test.html](docs/we
 * On **Windows** the frames go into a named shared memory region; the
   DirectShow source filter (registered in the `Video Input Devices`
   category) picks them up from inside whatever application opened the
-  camera. When the controller is not running, the filter serves a moving
-  color test pattern, so the camera never looks "dead".
+  camera.
+* A shared-memory frame can be missed for a moment - the controller is
+  preempted in the middle of a copy, or a source image is being decoded.
+  The Windows filter never answers that with the test pattern: it repeats
+  the last frame it delivered and switches to the moving color pattern only
+  when no frame has arrived yet or the controller has been gone for 2
+  seconds. Repeating a frame is what a hardware camera does; alternating
+  between the picture and the pattern once every few seconds is what makes
+  a virtual camera look broken in a live preview and in recording tests.
 * On **Linux** the controller writes the frames straight into the
   `/dev/videoN` node created by the v4l2loopback kernel module
   (installed and configured by the package).

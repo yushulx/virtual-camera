@@ -368,19 +368,25 @@ HRESULT VirtualCameraStream::OnThreadCreate()
     m_interval = 10000000i64 / (fps > 0 ? fps : 30);
     m_sampleTime = 0;
     m_frameIndex = 0;
+    // A fresh stream starts on the test pattern until the controller feeds a
+    // frame; everything after that repeats the last frame instead.
+    m_hasFrame = false;
+    m_lastFrameCount = 0;
     return NOERROR;
 }
 
 HRESULT VirtualCameraStream::deliverSharedFrame(uint8_t* rgb, int width,
                                                 int height, int stride,
-                                                int /*frameIndex*/)
+                                                int /*frameIndex*/,
+                                                uint32_t* frameCount)
 {
     const size_t frameBytes = static_cast<size_t>(width) * height * 2;
     if (m_yuyv.size() < frameBytes) {
         m_yuyv.resize(frameBytes);
     }
-    uint32_t sw = 0, sh = 0, sstride = 0;
-    if (!m_reader.readLatest(m_yuyv.data(), m_yuyv.size(), &sw, &sh, &sstride)) {
+    uint32_t sw = 0, sh = 0, sstride = 0, count = 0;
+    if (!m_reader.readLatest(m_yuyv.data(), m_yuyv.size(), &sw, &sh, &sstride,
+                             &count)) {
         VCAM_TRACE_P("deliverSharedFrame: readLatest FAILED");
         return S_FALSE; // controller not running or torn read
     }
@@ -390,6 +396,9 @@ HRESULT VirtualCameraStream::deliverSharedFrame(uint8_t* rgb, int width,
                   sh, width, height);
         VCAM_TRACE_P(msg);
         return S_FALSE;
+    }
+    if (frameCount != nullptr) {
+        *frameCount = count;
     }
     VCAM_TRACE_P("deliverSharedFrame: frame ok");
     yuyvToRgb24(m_yuyv.data(), rgb, width, height, stride);
@@ -437,7 +446,39 @@ HRESULT VirtualCameraStream::FillBuffer(IMediaSample* sample)
         return E_FAIL;
     }
 
-    if (deliverSharedFrame(data, width, height, stride, m_frameIndex) != S_OK) {
+    // Dimensions changed (the controller was restarted with another
+    // resolution): the cached frame no longer matches the buffer.
+    if (m_lastFrame.size() != static_cast<size_t>(size)) {
+        m_lastFrame.resize(static_cast<size_t>(size));
+        m_hasFrame = false;
+    }
+
+    // Keep the pin alive across short read failures without ever showing the
+    // test pattern mid-stream. 2 s of silence means the controller is gone.
+    constexpr ULONGLONG kHoldLastFrameMs = 2000;
+
+    uint32_t sharedCount = 0;
+    const HRESULT shared =
+        deliverSharedFrame(data, width, height, stride, m_frameIndex,
+                           &sharedCount);
+    if (shared == S_OK) {
+        if (!m_hasFrame || sharedCount != m_lastFrameCount) {
+            // New frame: deliverSharedFrame() already converted it into the
+            // sample; keep a copy so the next repeat costs one memcpy.
+            memcpy(m_lastFrame.data(), data, static_cast<size_t>(size));
+            m_lastFrameCount = sharedCount;
+            m_hasFrame = true;
+        } else {
+            // The writer has produced nothing new since the previous call
+            // (controller slower than the pin): re-send the converted frame
+            // instead of converting it again.
+            memcpy(data, m_lastFrame.data(), static_cast<size_t>(size));
+        }
+        m_lastFrameTick = now;
+    } else if (m_hasFrame && now - m_lastFrameTick < kHoldLastFrameMs) {
+        memcpy(data, m_lastFrame.data(), static_cast<size_t>(size));
+    } else {
+        m_hasFrame = false;
         deliverTestPattern(data, width, height, stride, m_frameIndex);
     }
     ++m_frameIndex;

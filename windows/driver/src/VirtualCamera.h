@@ -65,12 +65,20 @@ protected:
 private:
     VirtualCamera* parent() const;
     HRESULT deliverSharedFrame(uint8_t* rgb, int width, int height, int stride,
-                               int frameIndex);
+                               int frameIndex, uint32_t* frameCount);
     HRESULT deliverTestPattern(uint8_t* rgb, int width, int height, int stride,
                                int frameIndex);
 
     SharedFrameReader m_reader;
     std::vector<uint8_t> m_yuyv; // staging for the shared memory frame
+    // Last frame handed to the sink. A consumer must never see the test
+    // pattern while the controller is streaming: when a shared-memory read
+    // fails (writer preempted mid-copy, controller restarting) the pin
+    // repeats this frame instead of drawing the pattern.
+    std::vector<uint8_t> m_lastFrame;
+    uint32_t m_lastFrameCount = 0; // writer's frame counter of m_lastFrame
+    bool m_hasFrame = false;
+    ULONGLONG m_lastFrameTick = 0; // GetTickCount64 of the last real frame
     REFERENCE_TIME m_sampleTime = 0;
     REFERENCE_TIME m_interval = 333333; // 100ns units (30 fps)
     int m_frameIndex = 0;
