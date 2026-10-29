@@ -3,6 +3,7 @@
 
 #include "vcam/CameraController.h"
 #include "vcam/Config.h"
+#include "vcam/ImageFit.h"
 #include "vcam/ImageSource.h"
 #include "vcam/MediaSource.h"
 #include "vcam/PatternSource.h"
@@ -136,6 +137,32 @@ void testImageSource()
     CHECK(!missing.lastError().isEmpty());
 }
 
+void testImageFit()
+{
+    // A square source in a 16:9 canvas keeps its proportions and is
+    // pillarboxed; stretching it would turn a QR code into a rectangle.
+    const QImage square = solidImage(200, 200, QColor(255, 255, 255));
+    const QImage fitted = fitImageToCanvas(square, 320, 180);
+    CHECK_EQ(fitted.width(), 320);
+    CHECK_EQ(fitted.height(), 180);
+    CHECK(fitted.pixelColor(0, 90).red() < 16);      // left bar
+    CHECK(fitted.pixelColor(319, 90).red() < 16);    // right bar
+    CHECK(fitted.pixelColor(160, 90).red() > 240);   // image, centred
+
+    // A 16:9 source fills the canvas, so no bar is introduced.
+    const QImage wide = solidImage(320, 180, QColor(255, 255, 255));
+    const QImage filled = fitImageToCanvas(wide, 320, 180);
+    CHECK(filled.pixelColor(0, 0).red() > 240);
+    CHECK(filled.pixelColor(319, 179).red() > 240);
+
+    // A source wider than 16:9 is letterboxed top and bottom.
+    const QImage banner = solidImage(400, 100, QColor(255, 255, 255));
+    const QImage boxed = fitImageToCanvas(banner, 320, 180);
+    CHECK(boxed.pixelColor(160, 0).red() < 16);
+    CHECK(boxed.pixelColor(160, 179).red() < 16);
+    CHECK(boxed.pixelColor(160, 90).red() > 240);
+}
+
 void testConfigRoundtrip()
 {
     QTemporaryDir dir;
@@ -247,6 +274,7 @@ int main(int argc, char** argv)
     testYuyvOddWidth();
     testPatternSource();
     testImageSource();
+    testImageFit();
     testConfigRoundtrip();
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
     testSharedFrameWriter();

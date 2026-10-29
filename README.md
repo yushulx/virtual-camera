@@ -114,6 +114,10 @@ and select **Virtual Camera**.
 * A **static image** is scaled once and repeated at the configured frame rate.
 * A **folder of images** (or several files selected at once) is cycled like
   a slideshow in natural file order, about two seconds per image.
+* **The aspect ratio is preserved.** A source that is not the camera's aspect
+  is fitted inside the frame and the remainder is filled with black, so a
+  square QR code stays square. Stretching it would distort every module the
+  decoder measures.
 * Resolution presets 640x480 / 854x480 / 1280x720 / 1920x1080 and frame rates
   10 - 60 fps; the pixel format is YUYV (YUY2), 4:2:2, 16 bits per pixel.
 * The configuration (source file, resolution, frame rate, loop) persists

@@ -1,5 +1,7 @@
 #include "vcam/VideoSource.h"
 
+#include "vcam/ImageFit.h"
+
 #include <QMediaPlayer>
 #include <QTimer>
 #include <QUrl>
@@ -78,16 +80,21 @@ bool VideoSource::latestFrame(int width, int height, QImage* out)
     if (out == nullptr) {
         return false;
     }
-    QMutexLocker lock(&m_mutex);
-    if (m_latest.isNull()) {
-        return false;
+    QImage frame;
+    {
+        QMutexLocker lock(&m_mutex);
+        if (m_latest.isNull()) {
+            return false;
+        }
+        frame = m_latest;
     }
-    if (m_latest.size() == QSize(width, height)) {
-        *out = m_latest;
+    if (frame.size() == QSize(width, height)) {
+        *out = frame;
         return true;
     }
-    *out = m_latest.scaled(width, height, Qt::IgnoreAspectRatio,
-                           Qt::FastTransformation);
+    // Letterbox rather than stretch, and do it outside the lock so the
+    // capture thread is not held up by the fit.
+    *out = fitImageToCanvas(frame, width, height, Qt::FastTransformation);
     return true;
 }
 

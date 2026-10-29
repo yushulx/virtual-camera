@@ -1,5 +1,7 @@
 #include "vcam/FolderSource.h"
 
+#include "vcam/ImageFit.h"
+
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
@@ -136,10 +138,10 @@ bool FolderSource::latestFrame(int width, int height, QImage* out)
             cache[imageIndex] = QImage(width, height, QImage::Format_RGB888);
             cache[imageIndex].fill(QColor(32, 32, 32));
         } else {
-            cache[imageIndex] =
-                image.scaled(width, height, Qt::IgnoreAspectRatio,
-                             Qt::SmoothTransformation)
-                    .convertToFormat(QImage::Format_RGB888);
+            // Letterbox: cycling through a mixed folder must not stretch a
+            // portrait photo or a square QR code into the 16:9 canvas.
+            cache[imageIndex] = fitImageToCanvas(image, width, height,
+                                                 Qt::SmoothTransformation);
         }
     }
     *out = cache[imageIndex];

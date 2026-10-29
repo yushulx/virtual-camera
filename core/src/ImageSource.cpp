@@ -1,5 +1,7 @@
 #include "vcam/ImageSource.h"
 
+#include "vcam/ImageFit.h"
+
 #include <QImageReader>
 
 namespace vcam {
@@ -22,9 +24,10 @@ bool ImageSource::latestFrame(int width, int height, QImage* out)
     }
     QMutexLocker lock(&m_mutex);
     if (m_scaledSize != QSize(width, height) || m_scaled.isNull()) {
-        m_scaled = m_base.scaled(width, height, Qt::IgnoreAspectRatio,
-                                 Qt::SmoothTransformation)
-                       .convertToFormat(QImage::Format_RGB888);
+        // Letterbox instead of stretching: a photo that is not 16:9 keeps its
+        // proportions, so a square QR code stays square for the decoder.
+        m_scaled = fitImageToCanvas(m_base, width, height,
+                                    Qt::SmoothTransformation);
         m_scaledSize = QSize(width, height);
     }
     *out = m_scaled;

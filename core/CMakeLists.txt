@@ -7,6 +7,7 @@ target_include_directories(vcamcore PUBLIC
 
 target_sources(vcamcore PRIVATE
     include/vcam/CameraController.h
+    include/vcam/ImageFit.h
     include/vcam/VideoSource.h
     src/CameraController.cpp
     src/Config.cpp
