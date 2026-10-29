@@ -75,8 +75,15 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 function FilterRegistered: Boolean;
 begin
+  { The COM class alone is not enough: the device only appears when the
+    filter is also listed in the Video Input Device category. Checking both
+    catches a registration that wrote the CLSID but failed to register the
+    device, which otherwise looks like "the camera is not there" with no
+    hint at all. }
   Result := RegKeyExists(HKEY_CLASSES_ROOT,
-    'CLSID\{D4A1F5B2-6E38-4C7A-9B2E-1F8D3A5C7E64}\InprocServer32');
+      'CLSID\{D4A1F5B2-6E38-4C7A-9B2E-1F8D3A5C7E64}\InprocServer32') and
+    RegKeyExists(HKEY_CLASSES_ROOT,
+      'CLSID\{860BB310-5D01-11D0-BD3B-00A0C911CE86}\Instance\Virtual Camera');
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
