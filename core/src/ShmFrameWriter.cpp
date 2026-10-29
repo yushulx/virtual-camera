@@ -1,6 +1,7 @@
 #include "vcam/ShmFrameWriter.h"
 
 #include "vcam/SharedFrameProtocol.h"
+#include "vcam/YuyvConverter.h"
 
 #include <QDeadlineTimer>
 #include <chrono>
@@ -170,6 +171,12 @@ bool ShmFrameWriter::start(const CameraConfig& cfg, QString* error)
     header->frameSeq = 0; // even = stable
     m_framesWritten = 0;
     m_scratch.assign(static_cast<size_t>(cfg.width) * cfg.height * 2, 0);
+
+    // Publish the header with a black payload. The region arrives zeroed, and
+    // an all-zero YUYV frame is not black: it decodes to saturated green, so
+    // consumers showed a green frame until the first video frame was decoded.
+    const size_t frameBytes = static_cast<size_t>(cfg.width) * cfg.height * 2;
+    fillYuyvBlack(m_mapped + kSharedHeaderSize, frameBytes);
     seqBegin(&header->frameSeq);
     header->magic = kSharedFrameMagic;
     seqEnd(&header->frameSeq);

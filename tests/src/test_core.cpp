@@ -137,6 +137,20 @@ void testImageSource()
     CHECK(!missing.lastError().isEmpty());
 }
 
+void testYuyvBlackFill()
+{
+    // The frame a writer publishes before the first real frame must be black,
+    // not the saturated green an all-zero YUYV buffer decodes to.
+    uint8_t buffer[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    fillYuyvBlack(buffer, sizeof(buffer));
+    CHECK_EQ(buffer[0], 16);   // Y0
+    CHECK_EQ(buffer[1], 128);  // U
+    CHECK_EQ(buffer[2], 16);   // Y1
+    CHECK_EQ(buffer[3], 128);  // V
+    CHECK_EQ(buffer[4], 16);
+    CHECK_EQ(buffer[7], 128);
+}
+
 void testImageFit()
 {
     // A square source in a 16:9 canvas keeps its proportions and is
@@ -210,6 +224,31 @@ void testSharedFrameWriter()
     }
     CHECK(writer.isRunning());
 
+#if defined(Q_OS_WIN)
+    // Before the first real frame the payload must already be black: the
+    // region arrives zeroed, and zeroed YUYV decodes to saturated green.
+    {
+        HANDLE mapping = OpenFileMappingW(FILE_MAP_READ, FALSE,
+            QString::fromLatin1(vcam::kShmWindowsName).toStdWString().c_str());
+        CHECK(mapping != nullptr);
+        if (mapping) {
+            const uint8_t* view = static_cast<const uint8_t*>(
+                MapViewOfFile(mapping, FILE_MAP_READ, 0, 0,
+                              vcam::kSharedRegionBytes));
+            CHECK(view != nullptr);
+            if (view) {
+                const uint8_t* payload = view + vcam::kSharedHeaderSize;
+                CHECK_EQ(payload[0], 16);   // Y
+                CHECK_EQ(payload[1], 128);  // U
+                CHECK_EQ(payload[2], 16);
+                CHECK_EQ(payload[3], 128);
+                UnmapViewOfFile(view);
+            }
+            CloseHandle(mapping);
+        }
+    }
+#endif
+
     const QImage frame = solidImage(64, 48, QColor(255, 255, 255));
     std::vector<uint8_t> yuyv(64 * 48 * 2);
     CHECK(convertImageToYuyv(frame, yuyv.data(), yuyv.size()));
@@ -274,6 +313,7 @@ int main(int argc, char** argv)
     testYuyvOddWidth();
     testPatternSource();
     testImageSource();
+    testYuyvBlackFill();
     testImageFit();
     testConfigRoundtrip();
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)

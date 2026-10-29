@@ -19,4 +19,11 @@ bool convertImageToYuyv(const QImage& image, uint8_t* dst, size_t dstCapacity);
 // Inverse conversion (used by the GUI preview and the unit tests).
 QImage convertYuyvToImage(const uint8_t* data, int width, int height, size_t capacity);
 
+// Fill a YUYV buffer with limited-range black (Y=16, U=V=128).
+//
+// Both writers publish this before the first real frame: an all-zero buffer
+// is not black in YUV, it decodes to saturated green (Y=0, U=V=0), which is
+// what consumers showed while a video source was still opening its decoder.
+void fillYuyvBlack(uint8_t* data, size_t bytes);
+
 } // namespace vcam

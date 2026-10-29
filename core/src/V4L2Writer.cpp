@@ -1,10 +1,13 @@
 #include "vcam/V4L2Writer.h"
 
+#include "vcam/YuyvConverter.h"
+
 #include <QDir>
 #include <QFile>
 #include <QScopeGuard>
 
 #include <cerrno>
+#include <vector>
 #include <cstring>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -149,6 +152,14 @@ bool V4L2Writer::start(const CameraConfig& cfg, QString* error)
     m_height = cfg.height;
     m_fps = cfg.fps;
     m_devicePath = device;
+
+    // Prime the node with a black frame: a consumer that opens it before the
+    // controller produced its first frame would otherwise read an
+    // uninitialised kernel buffer, which shows up as a green or garbled
+    // first frame.
+    std::vector<uint8_t> black(static_cast<size_t>(cfg.width) * cfg.height * 2);
+    fillYuyvBlack(black.data(), black.size());
+    writeFrame(black.data(), cfg.width, cfg.height);
     return true;
 }
 

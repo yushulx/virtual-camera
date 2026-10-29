@@ -66,6 +66,20 @@ bool convertImageToYuyv(const QImage& image, uint8_t* dst, size_t dstCapacity)
     return true;
 }
 
+void fillYuyvBlack(uint8_t* data, size_t bytes)
+{
+    if (data == nullptr) {
+        return;
+    }
+    // YUYV pair: Y0=16, U=128, Y1=16, V=128 -> limited-range black.
+    for (size_t i = 0; i + 3 < bytes; i += 4) {
+        data[i + 0] = 16;
+        data[i + 1] = 128;
+        data[i + 2] = 16;
+        data[i + 3] = 128;
+    }
+}
+
 QImage convertYuyvToImage(const uint8_t* data, int width, int height, size_t capacity)
 {
     if (data == nullptr || width <= 0 || height <= 0) {

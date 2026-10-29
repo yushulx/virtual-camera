@@ -54,6 +54,51 @@
     not decode.
 * Try a static image first to isolate decode problems.
 
+## The first frame is green
+
+Fixed in 1.0.7. On 1.0.6 and older the shared memory region (and the V4L2
+node on Linux) started out zeroed, and an all-zero YUYV frame is not black:
+Y=0 with U=V=0 decodes to saturated green. A video source needs a few
+hundred milliseconds to open its decoder, so that green buffer was on screen
+until the first real frame arrived. Both writers now publish a limited-range
+black frame (Y=16, U=V=128) before the first frame.
+
+If you still see green on 1.0.7, check that the consumer selected the right
+device and that the controller is the new build.
+
+## The camera is missing after OBS (or another virtual camera) was installed
+
+Two virtual cameras do not conflict at the registration level: each one is a
+separate COM class in the `Video Input Devices` category, with its own CLSID
+and its own device name (`Virtual Camera` here, `OBS Virtual Camera` for
+OBS). Registering or unregistering one does not touch the other.
+
+What does make a camera "disappear" in that situation:
+
+* **The application enumerated devices before the camera existed.** Chrome,
+  Zoom, Teams and most desktop apps read the camera list when they start.
+  Install or register the filter, then fully quit and reopen the application
+  - closing the tab is not enough for a browser.
+* **The application is 32-bit.** This filter is registered for 64-bit
+  consumers only. A 32-bit host sees the 32-bit part of the registry, where
+  the filter does not exist, so it lists only cameras that also ship a
+  32-bit filter.
+* **Camera access is blocked for that app.** *Settings > Privacy & security >
+  Camera* has a per-application switch on Windows 10/11.
+* **The registration never happened.** Reinstalling repairs it, or register
+  the DLL under `C:\Program Files\VirtualCamera\driver` from an administrator
+  prompt and reopen the app.
+
+Run the bundled diagnostic to see which of these applies:
+
+```bat
+enum-cameras.exe
+```
+
+It prints every enumerated device with its CLSID, the DLL that serves it, the
+architecture of that DLL and whether a 32-bit registration exists, then a
+summary that names this project's filter and OBS's if present.
+
 ## Changed resolution/frame rate but the app still shows the old size
 
 Restart the camera stream in the consuming application (browsers: a
